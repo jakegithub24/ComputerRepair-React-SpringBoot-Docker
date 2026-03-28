@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: com.repairshop.property.AdminUserListPropertyTest
+-------------------------------------------------------------------------------
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 70.32 s -- in com.repairshop.property.AdminUserListPropertyTest

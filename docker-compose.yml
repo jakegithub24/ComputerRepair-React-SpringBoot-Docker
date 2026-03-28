@@ -1,0 +1,34 @@
+services:
+  database:
+    build:
+      context: ./database
+    volumes:
+      - db-data:/data
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+    ports:
+      - "8080:8080"
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:sqlite:/data/repairshop.db
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production-use-a-long-random-secret}
+    volumes:
+      - db-data:/data
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  db-data:
