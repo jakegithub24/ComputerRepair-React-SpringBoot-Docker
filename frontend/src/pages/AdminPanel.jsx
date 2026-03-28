@@ -2,100 +2,127 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import Navbar from '../components/Navbar';
 
 const ORDER_STATUSES = ['Pending', 'In Progress', 'Completed', 'Cancelled'];
 const ENQUIRY_STATUSES = ['Open', 'In Progress', 'Resolved', 'Closed'];
 
+const STATUS_COLORS = {
+  Pending:       'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300',
+  'In Progress': 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
+  Completed:     'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300',
+  Cancelled:     'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300',
+  Open:          'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300',
+  Resolved:      'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300',
+  Closed:        'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300',
+};
+
+function StatusBadge({ status }) {
+  const cls = STATUS_COLORS[status] || 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300';
+  return <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${cls}`}>{status}</span>;
+}
+
+function formatDate(iso) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleString();
+}
+
+function Pagination({ page, totalPages, onPrev, onNext }) {
+  return (
+    <div className="flex items-center justify-between px-6 py-3 border-t border-slate-100 dark:border-slate-700">
+      <button
+        type="button"
+        onClick={onPrev}
+        disabled={page === 0}
+        className="px-3 py-1.5 text-sm rounded-lg border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+      >
+        ← Prev
+      </button>
+      <span className="text-sm text-slate-500 dark:text-slate-400">
+        Page {page + 1} of {Math.max(totalPages, 1)}
+      </span>
+      <button
+        type="button"
+        onClick={onNext}
+        disabled={page >= totalPages - 1}
+        className="px-3 py-1.5 text-sm rounded-lg border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+      >
+        Next →
+      </button>
+    </div>
+  );
+}
+
 function AdminPanel() {
   const navigate = useNavigate();
-  const { token, logout } = useAuth();
-
+  const { token } = useAuth();
   const [activeTab, setActiveTab] = useState('users');
 
-  // Users state
   const [users, setUsers] = useState([]);
   const [usersPage, setUsersPage] = useState(0);
   const [usersTotalPages, setUsersTotalPages] = useState(0);
   const [usersLoading, setUsersLoading] = useState(false);
   const [usersError, setUsersError] = useState('');
 
-  // Orders state
   const [orders, setOrders] = useState([]);
   const [ordersPage, setOrdersPage] = useState(0);
   const [ordersTotalPages, setOrdersTotalPages] = useState(0);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [ordersError, setOrdersError] = useState('');
 
-  // Enquiries state
   const [enquiries, setEnquiries] = useState([]);
   const [enquiriesPage, setEnquiriesPage] = useState(0);
   const [enquiriesTotalPages, setEnquiriesTotalPages] = useState(0);
   const [enquiriesLoading, setEnquiriesLoading] = useState(false);
   const [enquiriesError, setEnquiriesError] = useState('');
 
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
+
   const headers = { Authorization: `Bearer ${token}` };
 
-  const handle401 = useCallback(() => {
-    logout();
-    navigate('/login');
-  }, [logout, navigate]);
+  const handle401 = useCallback(() => { navigate('/login'); }, [navigate]);
 
-  // Fetch users
   const fetchUsers = useCallback(async (page = 0) => {
-    setUsersLoading(true);
-    setUsersError('');
+    setUsersLoading(true); setUsersError('');
     try {
       const res = await axios.get(`/api/admin/users?page=${page}&size=20`, { headers });
-      setUsers(res.data.content);
-      setUsersTotalPages(res.data.totalPages);
+      setUsers(res.data.content); setUsersTotalPages(res.data.totalPages);
     } catch (err) {
       if (err.response?.status === 401) handle401();
       else setUsersError('Failed to load users.');
-    } finally {
-      setUsersLoading(false);
-    }
+    } finally { setUsersLoading(false); }
   }, [token, handle401]);
 
-  // Fetch orders
   const fetchOrders = useCallback(async (page = 0) => {
-    setOrdersLoading(true);
-    setOrdersError('');
+    setOrdersLoading(true); setOrdersError('');
     try {
       const res = await axios.get(`/api/admin/orders?page=${page}&size=20`, { headers });
-      setOrders(res.data.content);
-      setOrdersTotalPages(res.data.totalPages);
+      setOrders(res.data.content); setOrdersTotalPages(res.data.totalPages);
     } catch (err) {
       if (err.response?.status === 401) handle401();
       else setOrdersError('Failed to load orders.');
-    } finally {
-      setOrdersLoading(false);
-    }
+    } finally { setOrdersLoading(false); }
   }, [token, handle401]);
 
-  // Fetch enquiries
   const fetchEnquiries = useCallback(async (page = 0) => {
-    setEnquiriesLoading(true);
-    setEnquiriesError('');
+    setEnquiriesLoading(true); setEnquiriesError('');
     try {
       const res = await axios.get(`/api/admin/enquiries?page=${page}&size=20`, { headers });
-      setEnquiries(res.data.content);
-      setEnquiriesTotalPages(res.data.totalPages);
+      setEnquiries(res.data.content); setEnquiriesTotalPages(res.data.totalPages);
     } catch (err) {
       if (err.response?.status === 401) handle401();
       else setEnquiriesError('Failed to load enquiries.');
-    } finally {
-      setEnquiriesLoading(false);
-    }
+    } finally { setEnquiriesLoading(false); }
   }, [token, handle401]);
 
   useEffect(() => { fetchUsers(usersPage); }, [usersPage]);
   useEffect(() => { fetchOrders(ordersPage); }, [ordersPage]);
   useEffect(() => { fetchEnquiries(enquiriesPage); }, [enquiriesPage]);
 
-  // Delete user
   async function handleDeleteUser(id) {
     try {
       await axios.delete(`/api/admin/users/${id}`, { headers });
+      setDeleteConfirm(null);
       fetchUsers(usersPage);
     } catch (err) {
       if (err.response?.status === 401) handle401();
@@ -103,7 +130,6 @@ function AdminPanel() {
     }
   }
 
-  // Update order status
   async function handleOrderStatusChange(id, status) {
     try {
       await axios.patch(`/api/admin/orders/${id}/status`, { status }, { headers });
@@ -114,7 +140,6 @@ function AdminPanel() {
     }
   }
 
-  // Update enquiry status
   async function handleEnquiryStatusChange(id, status) {
     try {
       await axios.patch(`/api/admin/enquiries/${id}/status`, { status }, { headers });
@@ -125,216 +150,245 @@ function AdminPanel() {
     }
   }
 
+  const tabs = [
+    { id: 'users', label: '👥 Users' },
+    { id: 'orders', label: '📦 Orders' },
+    { id: 'enquiries', label: '💬 Enquiries' },
+  ];
+
+  const selectClass = "px-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition";
+
   return (
-    <main>
-      <h1>Admin Panel</h1>
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+      <Navbar title="TechFix — Admin" />
 
-      <nav>
-        <button type="button" onClick={() => setActiveTab('users')} aria-pressed={activeTab === 'users'}>
-          Users
-        </button>
-        <button type="button" onClick={() => setActiveTab('orders')} aria-pressed={activeTab === 'orders'}>
-          Orders
-        </button>
-        <button type="button" onClick={() => setActiveTab('enquiries')} aria-pressed={activeTab === 'enquiries'}>
-          Enquiries
-        </button>
-      </nav>
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="mb-8 p-6 bg-gradient-to-r from-amber-500 to-orange-500 dark:from-amber-600 dark:to-orange-600 rounded-2xl text-white shadow">
+          <h1 className="text-2xl font-bold">Admin Panel 🛠️</h1>
+          <p className="text-amber-100 mt-1 text-sm">Manage users, orders, and enquiries.</p>
+        </div>
 
-      {activeTab === 'users' && (
-        <section aria-label="Users">
-          <h2>Users</h2>
-          {usersError && <p role="alert">{usersError}</p>}
-          {usersLoading ? (
-            <p>Loading…</p>
-          ) : (
-            <>
-              <table>
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>Username</th>
-                    <th>Email</th>
-                    <th>Role</th>
-                    <th>Created At</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {users.map((user) => (
-                    <tr key={user.id}>
-                      <td>{user.id}</td>
-                      <td>{user.username}</td>
-                      <td>{user.email}</td>
-                      <td>{user.role}</td>
-                      <td>{user.createdAt}</td>
-                      <td>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteUser(user.id)}
-                          aria-label={`Delete user ${user.username}`}
-                        >
-                          Delete
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <div>
+        {/* Tabs */}
+        <div className="flex gap-2 mb-6 bg-white dark:bg-slate-800 p-1.5 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 w-fit">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-5 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                activeTab === tab.id
+                  ? 'bg-blue-600 text-white shadow'
+                  : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Delete confirmation modal */}
+        {deleteConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-6 max-w-sm w-full mx-4">
+              <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-2">Delete User?</h3>
+              <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">
+                This will permanently delete <strong className="text-slate-700 dark:text-slate-200">{deleteConfirm.username}</strong> and all their orders and enquiries.
+              </p>
+              <div className="flex gap-3">
                 <button
                   type="button"
-                  onClick={() => setUsersPage((p) => p - 1)}
-                  disabled={usersPage === 0}
+                  onClick={() => handleDeleteUser(deleteConfirm.id)}
+                  className="flex-1 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg text-sm transition-colors"
                 >
-                  Prev
+                  Delete
                 </button>
-                <span> Page {usersPage + 1} of {usersTotalPages} </span>
                 <button
                   type="button"
-                  onClick={() => setUsersPage((p) => p + 1)}
-                  disabled={usersPage >= usersTotalPages - 1}
+                  onClick={() => setDeleteConfirm(null)}
+                  className="flex-1 py-2 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 font-semibold rounded-lg text-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
                 >
-                  Next
+                  Cancel
                 </button>
               </div>
-            </>
-          )}
-        </section>
-      )}
+            </div>
+          </div>
+        )}
 
-      {activeTab === 'orders' && (
-        <section aria-label="Orders">
-          <h2>Orders</h2>
-          {ordersError && <p role="alert">{ordersError}</p>}
-          {ordersLoading ? (
-            <p>Loading…</p>
-          ) : (
-            <>
-              <table>
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>Username</th>
-                    <th>Service Type</th>
-                    <th>Device Description</th>
-                    <th>Status</th>
-                    <th>Created At</th>
-                    <th>Update Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {orders.map((order) => (
-                    <tr key={order.id}>
-                      <td>{order.id}</td>
-                      <td>{order.username}</td>
-                      <td>{order.serviceType}</td>
-                      <td>{order.deviceDescription}</td>
-                      <td>{order.status}</td>
-                      <td>{order.createdAt}</td>
-                      <td>
-                        <select
-                          value={order.status}
-                          onChange={(e) => handleOrderStatusChange(order.id, e.target.value)}
-                          aria-label={`Update status for order ${order.id}`}
-                        >
-                          {ORDER_STATUSES.map((s) => (
-                            <option key={s} value={s}>{s}</option>
-                          ))}
-                        </select>
-                      </td>
+        {/* Users Tab */}
+        {activeTab === 'users' && (
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow border border-slate-100 dark:border-slate-700">
+            <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700">
+              <h2 className="text-lg font-bold text-slate-800 dark:text-white">Registered Users</h2>
+            </div>
+            {usersError && <div className="mx-6 mt-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-sm">{usersError}</div>}
+            {usersLoading ? (
+              <div className="py-16 text-center text-slate-400 dark:text-slate-500">Loading…</div>
+            ) : users.length === 0 ? (
+              <div className="py-16 text-center text-slate-400 dark:text-slate-500">No users found.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-slate-50 dark:bg-slate-700/50 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                      <th className="px-6 py-3">ID</th>
+                      <th className="px-6 py-3">Username</th>
+                      <th className="px-6 py-3">Email</th>
+                      <th className="px-6 py-3">Role</th>
+                      <th className="px-6 py-3">Registered</th>
+                      <th className="px-6 py-3">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-              <div>
-                <button
-                  type="button"
-                  onClick={() => setOrdersPage((p) => p - 1)}
-                  disabled={ordersPage === 0}
-                >
-                  Prev
-                </button>
-                <span> Page {ordersPage + 1} of {ordersTotalPages} </span>
-                <button
-                  type="button"
-                  onClick={() => setOrdersPage((p) => p + 1)}
-                  disabled={ordersPage >= ordersTotalPages - 1}
-                >
-                  Next
-                </button>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                    {users.map((user) => (
+                      <tr key={user.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+                        <td className="px-6 py-3 text-slate-400 dark:text-slate-500">#{user.id}</td>
+                        <td className="px-6 py-3 font-medium text-slate-800 dark:text-white">{user.username}</td>
+                        <td className="px-6 py-3 text-slate-500 dark:text-slate-400">{user.email}</td>
+                        <td className="px-6 py-3">
+                          <span className={`px-2 py-0.5 rounded text-xs font-semibold ${user.role === 'ADMIN' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'}`}>
+                            {user.role}
+                          </span>
+                        </td>
+                        <td className="px-6 py-3 text-slate-400 dark:text-slate-500 text-xs">{formatDate(user.createdAt)}</td>
+                        <td className="px-6 py-3">
+                          {user.role !== 'ADMIN' && (
+                            <button
+                              type="button"
+                              onClick={() => setDeleteConfirm(user)}
+                              className="px-3 py-1 text-xs font-semibold text-red-600 dark:text-red-400 border border-red-300 dark:border-red-700 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                            >
+                              Delete
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            </>
-          )}
-        </section>
-      )}
+            )}
+            <Pagination page={usersPage} totalPages={usersTotalPages} onPrev={() => setUsersPage((p) => p - 1)} onNext={() => setUsersPage((p) => p + 1)} />
+          </div>
+        )}
 
-      {activeTab === 'enquiries' && (
-        <section aria-label="Enquiries">
-          <h2>Enquiries</h2>
-          {enquiriesError && <p role="alert">{enquiriesError}</p>}
-          {enquiriesLoading ? (
-            <p>Loading…</p>
-          ) : (
-            <>
-              <table>
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>Username</th>
-                    <th>Subject</th>
-                    <th>Message</th>
-                    <th>Status</th>
-                    <th>Created At</th>
-                    <th>Update Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {enquiries.map((enquiry) => (
-                    <tr key={enquiry.id}>
-                      <td>{enquiry.id}</td>
-                      <td>{enquiry.username}</td>
-                      <td>{enquiry.subject}</td>
-                      <td>{enquiry.message}</td>
-                      <td>{enquiry.status}</td>
-                      <td>{enquiry.createdAt}</td>
-                      <td>
-                        <select
-                          value={enquiry.status}
-                          onChange={(e) => handleEnquiryStatusChange(enquiry.id, e.target.value)}
-                          aria-label={`Update status for enquiry ${enquiry.id}`}
-                        >
-                          {ENQUIRY_STATUSES.map((s) => (
-                            <option key={s} value={s}>{s}</option>
-                          ))}
-                        </select>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <div>
-                <button
-                  type="button"
-                  onClick={() => setEnquiriesPage((p) => p - 1)}
-                  disabled={enquiriesPage === 0}
-                >
-                  Prev
-                </button>
-                <span> Page {enquiriesPage + 1} of {enquiriesTotalPages} </span>
-                <button
-                  type="button"
-                  onClick={() => setEnquiriesPage((p) => p + 1)}
-                  disabled={enquiriesPage >= enquiriesTotalPages - 1}
-                >
-                  Next
-                </button>
+        {/* Orders Tab */}
+        {activeTab === 'orders' && (
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow border border-slate-100 dark:border-slate-700">
+            <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700">
+              <h2 className="text-lg font-bold text-slate-800 dark:text-white">All Orders</h2>
+            </div>
+            {ordersError && <div className="mx-6 mt-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-sm">{ordersError}</div>}
+            {ordersLoading ? (
+              <div className="py-16 text-center text-slate-400 dark:text-slate-500">Loading…</div>
+            ) : orders.length === 0 ? (
+              <div className="py-16 text-center text-slate-400 dark:text-slate-500">
+                <div className="text-4xl mb-2">📦</div>
+                <p>No orders yet.</p>
               </div>
-            </>
-          )}
-        </section>
-      )}
-    </main>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-slate-50 dark:bg-slate-700/50 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                      <th className="px-6 py-3">ID</th>
+                      <th className="px-6 py-3">User</th>
+                      <th className="px-6 py-3">Service</th>
+                      <th className="px-6 py-3">Device</th>
+                      <th className="px-6 py-3">Status</th>
+                      <th className="px-6 py-3">Date</th>
+                      <th className="px-6 py-3">Update Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                    {orders.map((order) => (
+                      <tr key={order.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+                        <td className="px-6 py-3 text-slate-400 dark:text-slate-500">#{order.id}</td>
+                        <td className="px-6 py-3 font-medium text-slate-700 dark:text-slate-200">{order.username}</td>
+                        <td className="px-6 py-3">
+                          <span className="px-2 py-0.5 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs font-semibold">{order.serviceType}</span>
+                        </td>
+                        <td className="px-6 py-3 text-slate-600 dark:text-slate-300 max-w-[180px] truncate">{order.deviceDescription}</td>
+                        <td className="px-6 py-3"><StatusBadge status={order.status} /></td>
+                        <td className="px-6 py-3 text-slate-400 dark:text-slate-500 text-xs">{formatDate(order.createdAt)}</td>
+                        <td className="px-6 py-3">
+                          <select
+                            value={order.status}
+                            onChange={(e) => handleOrderStatusChange(order.id, e.target.value)}
+                            aria-label={`Update status for order ${order.id}`}
+                            className={selectClass}
+                          >
+                            {ORDER_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                          </select>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <Pagination page={ordersPage} totalPages={ordersTotalPages} onPrev={() => setOrdersPage((p) => p - 1)} onNext={() => setOrdersPage((p) => p + 1)} />
+          </div>
+        )}
+
+        {/* Enquiries Tab */}
+        {activeTab === 'enquiries' && (
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow border border-slate-100 dark:border-slate-700">
+            <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700">
+              <h2 className="text-lg font-bold text-slate-800 dark:text-white">All Enquiries</h2>
+            </div>
+            {enquiriesError && <div className="mx-6 mt-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-sm">{enquiriesError}</div>}
+            {enquiriesLoading ? (
+              <div className="py-16 text-center text-slate-400 dark:text-slate-500">Loading…</div>
+            ) : enquiries.length === 0 ? (
+              <div className="py-16 text-center text-slate-400 dark:text-slate-500">
+                <div className="text-4xl mb-2">💬</div>
+                <p>No enquiries yet.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-slate-50 dark:bg-slate-700/50 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                      <th className="px-6 py-3">ID</th>
+                      <th className="px-6 py-3">User</th>
+                      <th className="px-6 py-3">Subject</th>
+                      <th className="px-6 py-3">Message</th>
+                      <th className="px-6 py-3">Status</th>
+                      <th className="px-6 py-3">Date</th>
+                      <th className="px-6 py-3">Update Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                    {enquiries.map((enq) => (
+                      <tr key={enq.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+                        <td className="px-6 py-3 text-slate-400 dark:text-slate-500">#{enq.id}</td>
+                        <td className="px-6 py-3 font-medium text-slate-700 dark:text-slate-200">{enq.username}</td>
+                        <td className="px-6 py-3 font-medium text-slate-700 dark:text-slate-200 max-w-[140px] truncate">{enq.subject}</td>
+                        <td className="px-6 py-3 text-slate-500 dark:text-slate-400 max-w-[200px] truncate">{enq.message}</td>
+                        <td className="px-6 py-3"><StatusBadge status={enq.status} /></td>
+                        <td className="px-6 py-3 text-slate-400 dark:text-slate-500 text-xs">{formatDate(enq.createdAt)}</td>
+                        <td className="px-6 py-3">
+                          <select
+                            value={enq.status}
+                            onChange={(e) => handleEnquiryStatusChange(enq.id, e.target.value)}
+                            aria-label={`Update status for enquiry ${enq.id}`}
+                            className={selectClass}
+                          >
+                            {ENQUIRY_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                          </select>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <Pagination page={enquiriesPage} totalPages={enquiriesTotalPages} onPrev={() => setEnquiriesPage((p) => p - 1)} onNext={() => setEnquiriesPage((p) => p + 1)} />
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 

@@ -1,14 +1,9 @@
 import React, { createContext, useContext, useState } from 'react';
 
-/**
- * Decode a JWT payload without verifying the signature.
- * Returns the parsed payload object, or null on failure.
- */
 function decodeJwt(token) {
   try {
     const parts = token.split('.');
     if (parts.length !== 3) return null;
-    // Base64url → Base64 → decode
     const payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
     const json = atob(payload);
     return JSON.parse(json);
@@ -25,13 +20,11 @@ export function AuthProvider({ children }) {
 
   function login(newToken) {
     const payload = decodeJwt(newToken);
-    if (!payload) return;
+    if (!payload) return null;
+    const user = { id: payload.userId, username: payload.sub, role: payload.role };
     setToken(newToken);
-    setCurrentUser({
-      id: payload.userId,
-      username: payload.sub,
-      role: payload.role,
-    });
+    setCurrentUser(user);
+    return user; // return so callers can redirect based on role
   }
 
   function logout() {
