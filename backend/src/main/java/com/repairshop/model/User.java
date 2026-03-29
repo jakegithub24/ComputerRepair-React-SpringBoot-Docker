@@ -22,6 +22,9 @@ public class User {
     @Column("created_at")
     private String createdAt;
 
+    @Column("deleted_at")
+    private String deletedAt;
+
     public User() {}
 
     public User(String username, String email, String passwordHash, String role, String createdAt) {
@@ -49,4 +52,9 @@ public class User {
 
     public String getCreatedAt() { return createdAt; }
     public void setCreatedAt(String createdAt) { this.createdAt = createdAt; }
+
+    public String getDeletedAt() { return deletedAt; }
+    public void setDeletedAt(String deletedAt) { this.deletedAt = deletedAt; }
+
+    public boolean isDeleted() { return deletedAt != null; }
 }

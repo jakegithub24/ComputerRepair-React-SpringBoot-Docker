@@ -4,6 +4,7 @@ import com.repairshop.model.User;
 import com.repairshop.repository.UserRepository;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -14,6 +15,7 @@ import java.time.Instant;
  * Requirement 9.1
  */
 @Component
+@Order(2)
 public class AdminSeeder implements ApplicationRunner {
 
     private static final String ADMIN_USERNAME = "admin";

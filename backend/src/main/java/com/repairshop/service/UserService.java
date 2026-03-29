@@ -47,20 +47,20 @@ public class UserService {
         User user = new User(req.username(), req.email(), hash, "USER", Instant.now().toString());
         User saved = userRepository.save(user);
 
-        return new UserResponse(saved.getId(), saved.getUsername(), saved.getEmail(), saved.getRole(), saved.getCreatedAt());
+        return new UserResponse(saved.getId(), saved.getUsername(), saved.getEmail(), saved.getRole(), saved.getCreatedAt(), saved.getDeletedAt());
     }
 
     /**
-     * Delete the authenticated user's own account.
-     * CASCADE DELETE in the schema removes all associated orders and enquiries.
+     * Logically delete the authenticated user's own account by setting deleted_at timestamp.
+     * The record remains in the database but the account is deactivated.
      * Throws AuthenticationException (401) if the user is not found.
      * Requirements: 4.2
      */
     public void deleteOwnAccount(Long userId) {
-        if (!userRepository.existsById(userId)) {
-            throw new AuthenticationException("User not found");
-        }
-        userRepository.deleteById(userId);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new AuthenticationException("User not found"));
+        user.setDeletedAt(Instant.now().toString());
+        userRepository.save(user);
     }
 
     /**
@@ -77,15 +77,15 @@ public class UserService {
         List<UserResponse> content = (fromIndex >= total)
                 ? List.of()
                 : all.subList(fromIndex, toIndex).stream()
-                        .map(u -> new UserResponse(u.getId(), u.getUsername(), u.getEmail(), u.getRole(), u.getCreatedAt()))
+                        .map(u -> new UserResponse(u.getId(), u.getUsername(), u.getEmail(), u.getRole(), u.getCreatedAt(), u.getDeletedAt()))
                         .toList();
 
         return new PageResponse<>(content, page, size, total, totalPages);
     }
 
     /**
-     * Delete a user by ID (admin only).
-     * CASCADE DELETE in the schema removes all associated orders and enquiries.
+     * Physically delete a user by ID (admin only — hard delete).
+     * Removes the user record and all associated data permanently.
      * Throws ResourceNotFoundException (404) if the user is not found.
      * Requirements: 11.2
      */
@@ -94,6 +94,17 @@ public class UserService {
             throw new ResourceNotFoundException("User not found with id: " + userId);
         }
         userRepository.deleteById(userId);
+    }
+
+    /**
+     * Logically deactivate a user by ID (admin only — soft delete).
+     * Sets deleted_at without removing the record.
+     */
+    public void deactivateUserById(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
+        user.setDeletedAt(Instant.now().toString());
+        userRepository.save(user);
     }
 
     /**

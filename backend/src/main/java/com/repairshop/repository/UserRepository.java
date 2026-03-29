@@ -19,6 +19,9 @@ public interface UserRepository extends CrudRepository<User, Long> {
     @Query("SELECT * FROM users WHERE role = :role LIMIT 1")
     Optional<User> findByRole(@Param("role") String role);
 
-    @Query("SELECT * FROM users")
+    @Query("SELECT * FROM users WHERE deleted_at IS NULL")
     List<User> findAll();
+
+    @Query("SELECT * FROM users")
+    List<User> findAllIncludingDeleted();
 }

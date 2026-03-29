@@ -44,7 +44,7 @@ public class AdminController {
     }
 
     /**
-     * DELETE /api/admin/users/{id} — delete a user by ID with cascade.
+     * DELETE /api/admin/users/{id} — physically delete a user by ID (hard delete).
      * Returns 204 No Content on success.
      * Returns 404 if user not found.
      * Requirements: 11.2
@@ -53,6 +53,16 @@ public class AdminController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteUser(@PathVariable Long id) {
         userService.deleteUserById(id);
+    }
+
+    /**
+     * PATCH /api/admin/users/{id}/deactivate — logically deactivate a user (soft delete).
+     * Sets deleted_at without removing the record.
+     */
+    @PatchMapping("/users/{id}/deactivate")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deactivateUser(@PathVariable Long id) {
+        userService.deactivateUserById(id);
     }
 
     /**

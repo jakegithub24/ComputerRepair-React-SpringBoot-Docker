@@ -74,6 +74,10 @@ public class AuthService {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new AuthenticationException("Invalid username or password"));
 
+        if (user.isDeleted()) {
+            throw new AuthenticationException("Invalid username or password");
+        }
+
         if (!verifyPassword(password, user.getPasswordHash())) {
             throw new AuthenticationException("Invalid username or password");
         }

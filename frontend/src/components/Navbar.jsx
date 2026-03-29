@@ -1,71 +1,238 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import ChangePasswordModal from './ChangePasswordModal';
 
-function Navbar({ title = 'TechFix' }) {
+// Map routes to human-readable breadcrumb labels
+const ROUTE_LABELS = {
+  '/':          'Home',
+  '/dashboard': 'Dashboard',
+  '/admin':     'Admin Panel',
+  '/chat':      'Chat',
+  '/login':     'Login',
+  '/register':  'Register',
+};
+
+function Navbar() {
   const { currentUser, logout } = useAuth();
   const { dark, toggle } = useTheme();
   const navigate = useNavigate();
+  const location = useLocation();
   const [showChangePwd, setShowChangePwd] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   function handleLogout() {
     logout();
     navigate('/');
   }
 
+  function handleBack() {
+    navigate(-1);
+  }
+
+  // Build breadcrumb: Home > Current Page
+  const currentLabel = ROUTE_LABELS[location.pathname] ?? 'Page';
+  const isHome = location.pathname === '/';
+
+  // Nav links based on auth state
+  const navLinks = currentUser
+    ? currentUser.role === 'ADMIN'
+      ? [
+          { to: '/admin',     label: '🛠️ Admin' },
+          { to: '/chat',      label: '💬 Chat' },
+        ]
+      : [
+          { to: '/dashboard', label: '📊 Dashboard' },
+          { to: '/chat',      label: '💬 Chat' },
+        ]
+    : [
+        { to: '/login',    label: 'Login' },
+        { to: '/register', label: 'Register' },
+      ];
+
   return (
     <>
-      <nav className="sticky top-0 z-10 bg-white/90 dark:bg-slate-900/90 backdrop-blur border-b border-slate-200 dark:border-slate-700">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2">
-            <span className="text-2xl">🔧</span>
-            <span className="font-bold text-lg text-slate-800 dark:text-white">{title}</span>
-          </Link>
+      <nav className="sticky top-0 z-20 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4">
+          {/* Main bar */}
+          <div className="flex items-center justify-between h-14">
 
-          <div className="flex items-center gap-3">
-            {currentUser && (
-              <span className="hidden sm:block text-sm text-slate-500 dark:text-slate-400">
-                👤{' '}
-                <span className="font-medium text-slate-700 dark:text-slate-200">{currentUser.username}</span>
-                {currentUser.role === 'ADMIN' && (
-                  <span className="ml-1.5 px-1.5 py-0.5 text-xs bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 rounded font-semibold">
-                    ADMIN
-                  </span>
+            {/* Left: back button + logo */}
+            <div className="flex items-center gap-2">
+              {!isHome && (
+                <button
+                  type="button"
+                  onClick={handleBack}
+                  className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  aria-label="Go back"
+                  title="Go back"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+              )}
+              <Link to="/" className="flex items-center gap-2 group">
+                <span className="text-xl">🔧</span>
+                <span className="font-bold text-slate-800 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                  TechFix
+                </span>
+              </Link>
+            </div>
+
+            {/* Center: desktop nav links */}
+            <div className="hidden md:flex items-center gap-1">
+              {navLinks.map((link) => (
+                <Link
+                  key={link.to}
+                  to={link.to}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                    location.pathname === link.to
+                      ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                      : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </div>
+
+            {/* Right: user info + actions */}
+            <div className="flex items-center gap-2">
+              {/* User badge */}
+              {currentUser && (
+                <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                  <span className="text-xs text-slate-500 dark:text-slate-400">👤</span>
+                  <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{currentUser.username}</span>
+                  {currentUser.role === 'ADMIN' && (
+                    <span className="px-1.5 py-0.5 text-xs bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 rounded font-semibold">
+                      ADMIN
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* Dark mode toggle */}
+              <button
+                type="button"
+                onClick={toggle}
+                className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                aria-label="Toggle dark mode"
+              >
+                {dark ? '☀️' : '🌙'}
+              </button>
+
+              {/* Auth actions */}
+              {currentUser ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setShowChangePwd(true)}
+                    className="hidden sm:block px-3 py-1.5 text-sm font-medium text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                  >
+                    🔑 Password
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="px-3 py-1.5 text-sm font-medium text-red-600 dark:text-red-400 border border-red-300 dark:border-red-700 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                  >
+                    Logout
+                  </button>
+                </>
+              ) : (
+                <div className="hidden sm:flex items-center gap-2">
+                  <Link to="/login" className="px-3 py-1.5 text-sm font-medium text-blue-600 dark:text-blue-400 border border-blue-300 dark:border-blue-700 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
+                    Login
+                  </Link>
+                  <Link to="/register" className="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors">
+                    Register
+                  </Link>
+                </div>
+              )}
+
+              {/* Mobile hamburger */}
+              <button
+                type="button"
+                onClick={() => setMenuOpen((v) => !v)}
+                className="md:hidden p-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                aria-label="Toggle menu"
+              >
+                {menuOpen ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
                 )}
-              </span>
+              </button>
+            </div>
+          </div>
+
+          {/* Breadcrumb bar */}
+          {!isHome && (
+            <div className="flex items-center gap-1.5 pb-2 text-xs text-slate-400 dark:text-slate-500">
+              <Link to="/" className="hover:text-blue-500 transition-colors">Home</Link>
+              <span>›</span>
+              <span className="text-slate-600 dark:text-slate-300 font-medium">{currentLabel}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Mobile dropdown menu */}
+        {menuOpen && (
+          <div className="md:hidden border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3 space-y-1">
+            {currentUser && (
+              <div className="flex items-center gap-2 px-2 py-2 mb-2 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-200">👤 {currentUser.username}</span>
+                {currentUser.role === 'ADMIN' && (
+                  <span className="px-1.5 py-0.5 text-xs bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 rounded font-semibold">ADMIN</span>
+                )}
+              </div>
             )}
-
-            <button
-              type="button"
-              onClick={toggle}
-              className="p-2 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
-              aria-label="Toggle dark mode"
-            >
-              {dark ? '☀️' : '🌙'}
-            </button>
-
+            {navLinks.map((link) => (
+              <Link
+                key={link.to}
+                to={link.to}
+                onClick={() => setMenuOpen(false)}
+                className={`block px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  location.pathname === link.to
+                    ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                }`}
+              >
+                {link.label}
+              </Link>
+            ))}
             {currentUser && (
               <>
                 <button
                   type="button"
-                  onClick={() => setShowChangePwd(true)}
-                  className="px-4 py-1.5 text-sm font-medium text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                  onClick={() => { setShowChangePwd(true); setMenuOpen(false); }}
+                  className="w-full text-left px-3 py-2 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                 >
-                  🔑 Password
+                  🔑 Change Password
                 </button>
                 <button
                   type="button"
-                  onClick={handleLogout}
-                  className="px-4 py-1.5 text-sm font-medium text-red-600 dark:text-red-400 border border-red-300 dark:border-red-700 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                  onClick={() => { handleLogout(); setMenuOpen(false); }}
+                  className="w-full text-left px-3 py-2 rounded-lg text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                 >
                   Logout
                 </button>
               </>
             )}
+            {!currentUser && (
+              <div className="flex gap-2 pt-1">
+                <Link to="/login" onClick={() => setMenuOpen(false)} className="flex-1 text-center px-3 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 border border-blue-300 dark:border-blue-700 rounded-lg">Login</Link>
+                <Link to="/register" onClick={() => setMenuOpen(false)} className="flex-1 text-center px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg">Register</Link>
+              </div>
+            )}
           </div>
-        </div>
+        )}
       </nav>
 
       {showChangePwd && <ChangePasswordModal onClose={() => setShowChangePwd(false)} />}

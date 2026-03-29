@@ -1,10 +1,10 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
-import Navbar from '../components/Navbar';
 import OrderForm from './OrderForm';
 import EnquiryForm from './EnquiryForm';
+import DeleteAccountModal from '../components/DeleteAccountModal';
 
 const STATUS_COLORS = {
   Pending:     'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300',
@@ -36,6 +36,7 @@ function Dashboard() {
   const [error, setError] = useState('');
   const [showOrderForm, setShowOrderForm] = useState(false);
   const [showEnquiryForm, setShowEnquiryForm] = useState(false);
+  const [showDeleteAccount, setShowDeleteAccount] = useState(false);
 
   const handle401 = useCallback(() => { logout(); navigate('/login'); }, [logout, navigate]);
 
@@ -61,14 +62,24 @@ function Dashboard() {
   useEffect(() => { fetchData(); }, [fetchData]);
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
-      <Navbar title="TechFix — Dashboard" />
-
+    <div className="bg-slate-50 dark:bg-slate-900">
+      {showDeleteAccount && <DeleteAccountModal onClose={() => setShowDeleteAccount(false)} />}
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Welcome banner */}
         <div className="mb-8 p-6 bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-700 dark:to-indigo-800 rounded-2xl text-white shadow">
-          <h1 className="text-2xl font-bold">Welcome back, {currentUser?.username}! 👋</h1>
-          <p className="text-blue-100 mt-1 text-sm">Manage your orders and enquiries below.</p>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold">Welcome back, {currentUser?.username}! 👋</h1>
+              <p className="text-blue-100 mt-1 text-sm">Manage your orders and enquiries below.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowDeleteAccount(true)}
+              className="shrink-0 px-3 py-1.5 text-xs font-medium text-red-200 border border-red-300/50 rounded-lg hover:bg-red-500/20 transition-colors"
+            >
+              Delete Account
+            </button>
+          </div>
         </div>
 
         {/* Action buttons */}
@@ -95,6 +106,12 @@ function Dashboard() {
           >
             {showEnquiryForm ? '✕ Cancel' : '+ New Enquiry'}
           </button>
+          <Link
+            to="/chat"
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm bg-emerald-600 hover:bg-emerald-700 text-white transition-colors"
+          >
+            💬 Chat with Admin
+          </Link>
         </div>
 
         {/* Inline forms */}

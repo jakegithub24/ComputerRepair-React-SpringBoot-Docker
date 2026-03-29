@@ -8,7 +8,8 @@ CREATE TABLE IF NOT EXISTS users (
     email         TEXT    UNIQUE NOT NULL,
     password_hash TEXT    NOT NULL,
     role          TEXT    NOT NULL DEFAULT 'USER',
-    created_at    TEXT    NOT NULL
+    created_at    TEXT    NOT NULL,
+    deleted_at    TEXT    DEFAULT NULL
 );
 
 -- Orders table
@@ -32,4 +33,30 @@ CREATE TABLE IF NOT EXISTS enquiries (
     status     TEXT    NOT NULL DEFAULT 'Open',
     created_at TEXT    NOT NULL,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Chat sessions table (request-based, linked to order or enquiry)
+CREATE TABLE IF NOT EXISTS chat_sessions (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id      INTEGER NOT NULL,
+    ref_type     TEXT    NOT NULL,  -- 'ORDER' or 'ENQUIRY'
+    ref_id       INTEGER NOT NULL,
+    subject      TEXT    NOT NULL,
+    status       TEXT    NOT NULL DEFAULT 'PENDING',  -- PENDING, ACTIVE, CLOSED
+    created_at   TEXT    NOT NULL,
+    accepted_at  TEXT    DEFAULT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Chat messages table
+CREATE TABLE IF NOT EXISTS chat_messages (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id      INTEGER NOT NULL,
+    sender_id       INTEGER NOT NULL,
+    sender_role     TEXT    NOT NULL,  -- 'USER' or 'ADMIN'
+    message_type    TEXT    NOT NULL DEFAULT 'TEXT',  -- 'TEXT' or 'IMAGE'
+    content         TEXT    NOT NULL,  -- text content or base64 image data
+    image_mime_type TEXT    DEFAULT NULL,
+    sent_at         TEXT    NOT NULL,
+    FOREIGN KEY (session_id) REFERENCES chat_sessions(id) ON DELETE CASCADE
 );

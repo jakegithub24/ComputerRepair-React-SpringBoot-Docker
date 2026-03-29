@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
-import Navbar from '../components/Navbar';
+import AdminChatPanel from './AdminChatPanel';
 
 const ORDER_STATUSES = ['Pending', 'In Progress', 'Completed', 'Cancelled'];
 const ENQUIRY_STATUSES = ['Open', 'In Progress', 'Resolved', 'Closed'];
@@ -119,17 +119,20 @@ function AdminPanel() {
   useEffect(() => { fetchOrders(ordersPage); }, [ordersPage]);
   useEffect(() => { fetchEnquiries(enquiriesPage); }, [enquiriesPage]);
 
-  async function handleDeleteUser(id) {
+  async function handleDeleteUser(id, hardDelete) {
     try {
-      await axios.delete(`/api/admin/users/${id}`, { headers });
+      if (hardDelete) {
+        await axios.delete(`/api/admin/users/${id}`, { headers });
+      } else {
+        await axios.patch(`/api/admin/users/${id}/deactivate`, {}, { headers });
+      }
       setDeleteConfirm(null);
       fetchUsers(usersPage);
     } catch (err) {
       if (err.response?.status === 401) handle401();
-      else setUsersError('Failed to delete user.');
+      else setUsersError(hardDelete ? 'Failed to delete user.' : 'Failed to deactivate user.');
     }
   }
-
   async function handleOrderStatusChange(id, status) {
     try {
       await axios.patch(`/api/admin/orders/${id}/status`, { status }, { headers });
@@ -154,14 +157,13 @@ function AdminPanel() {
     { id: 'users', label: '👥 Users' },
     { id: 'orders', label: '📦 Orders' },
     { id: 'enquiries', label: '💬 Enquiries' },
+    { id: 'chat', label: '🗨️ Chat' },
   ];
 
   const selectClass = "px-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition";
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
-      <Navbar title="TechFix — Admin" />
-
+    <div className="bg-slate-50 dark:bg-slate-900">
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8 p-6 bg-gradient-to-r from-amber-500 to-orange-500 dark:from-amber-600 dark:to-orange-600 rounded-2xl text-white shadow">
@@ -191,17 +193,24 @@ function AdminPanel() {
         {deleteConfirm && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
             <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-6 max-w-sm w-full mx-4">
-              <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-2">Delete User?</h3>
+              <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-2">
+                {deleteConfirm.hardDelete ? 'Permanently Delete User?' : 'Deactivate User?'}
+              </h3>
               <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">
-                This will permanently delete <strong className="text-slate-700 dark:text-slate-200">{deleteConfirm.username}</strong> and all their orders and enquiries.
+                {deleteConfirm.hardDelete
+                  ? <>This will <strong className="text-red-600 dark:text-red-400">permanently remove</strong> <strong className="text-slate-700 dark:text-slate-200">{deleteConfirm.username}</strong> and all their data. This cannot be undone.</>
+                  : <>This will deactivate <strong className="text-slate-700 dark:text-slate-200">{deleteConfirm.username}</strong>. Their data will be kept. You can permanently delete later.</>
+                }
               </p>
               <div className="flex gap-3">
                 <button
                   type="button"
-                  onClick={() => handleDeleteUser(deleteConfirm.id)}
-                  className="flex-1 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg text-sm transition-colors"
+                  onClick={() => handleDeleteUser(deleteConfirm.id, deleteConfirm.hardDelete)}
+                  className={`flex-1 py-2 text-white font-semibold rounded-lg text-sm transition-colors ${
+                    deleteConfirm.hardDelete ? 'bg-red-600 hover:bg-red-700' : 'bg-orange-500 hover:bg-orange-600'
+                  }`}
                 >
-                  Delete
+                  {deleteConfirm.hardDelete ? 'Permanently Delete' : 'Deactivate'}
                 </button>
                 <button
                   type="button"
@@ -252,17 +261,33 @@ function AdminPanel() {
                         </td>
                         <td className="px-6 py-3 text-slate-400 dark:text-slate-500 text-xs">{formatDate(user.createdAt)}</td>
                         <td className="px-6 py-3">
-                          {user.role !== 'ADMIN' && (
-                            <button
-                              type="button"
-                              onClick={() => setDeleteConfirm(user)}
-                              className="px-3 py-1 text-xs font-semibold text-red-600 dark:text-red-400 border border-red-300 dark:border-red-700 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                            >
-                              Delete
-                            </button>
-                          )}
-                        </td>
-                      </tr>
+                          {user.deletedAt ? (
+                            <div className="flex items-center gap-2">
+                              <span className="px-2 py-0.5 text-xs font-semibold bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400 rounded-full">
+                                Deactivated
+                              </span>
+                              {user.role !== 'ADMIN' && (
+                                <button
+                                  type="button"
+                                  onClick={() => setDeleteConfirm({ ...user, hardDelete: true })}
+                                  className="px-3 py-1 text-xs font-semibold text-red-600 dark:text-red-400 border border-red-300 dark:border-red-700 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                                >
+                                  Permanently Delete
+                                </button>
+                              )}
+                            </div>
+                          ) : user.role !== 'ADMIN' ? (
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setDeleteConfirm({ ...user, hardDelete: false })}
+                                className="px-3 py-1 text-xs font-semibold text-orange-600 dark:text-orange-400 border border-orange-300 dark:border-orange-700 rounded-lg hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors"
+                              >
+                                Deactivate
+                              </button>
+                            </div>
+                          ) : null}
+                        </td>                      </tr>
                     ))}
                   </tbody>
                 </table>
@@ -385,6 +410,13 @@ function AdminPanel() {
               </div>
             )}
             <Pagination page={enquiriesPage} totalPages={enquiriesTotalPages} onPrev={() => setEnquiriesPage((p) => p - 1)} onNext={() => setEnquiriesPage((p) => p + 1)} />
+          </div>
+        )}
+
+        {/* Chat Tab */}
+        {activeTab === 'chat' && (
+          <div className="h-[calc(100vh-280px)]">
+            <AdminChatPanel />
           </div>
         )}
       </div>
