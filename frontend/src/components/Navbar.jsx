@@ -58,8 +58,7 @@ function Navbar() {
   const navLinks = currentUser
     ? currentUser.role === 'ADMIN'
       ? [
-          { to: '/admin',     label: '🛠️ Admin' },
-          { to: '/chat',      label: '💬 Chat', unread: unreadCount },
+          { to: '/admin', label: '🛠️ Admin' },
         ]
       : [
           { to: '/dashboard', label: '📊 Dashboard' },

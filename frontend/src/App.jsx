@@ -47,7 +47,7 @@ function Layout() {
           <Route
             path="/chat"
             element={
-              <PrivateRoute>
+              <PrivateRoute userOnly>
                 <ChatPage />
               </PrivateRoute>
             }
