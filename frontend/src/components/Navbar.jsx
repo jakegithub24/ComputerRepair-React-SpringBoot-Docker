@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import ChangePasswordModal from './ChangePasswordModal';
+import axios from 'axios';
 
 // Map routes to human-readable breadcrumb labels
 const ROUTE_LABELS = {
@@ -15,12 +16,30 @@ const ROUTE_LABELS = {
 };
 
 function Navbar() {
-  const { currentUser, logout } = useAuth();
+  const { currentUser, logout, token } = useAuth();
   const { dark, toggle } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const [showChangePwd, setShowChangePwd] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  // Poll unread count every 15s when logged in
+  useEffect(() => {
+    if (!currentUser || !token) { setUnreadCount(0); return; }
+    const fetchUnread = async () => {
+      try {
+        const endpoint = currentUser.role === 'ADMIN' ? '/api/chat/admin/sessions' : '/api/chat/sessions';
+        const res = await axios.get(endpoint, { headers: { Authorization: `Bearer ${token}` } });
+        const field = currentUser.role === 'ADMIN' ? 'unreadAdmin' : 'unreadUser';
+        const total = res.data.reduce((sum, s) => sum + (s[field] || 0), 0);
+        setUnreadCount(total);
+      } catch { /* ignore */ }
+    };
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 15000);
+    return () => clearInterval(interval);
+  }, [currentUser, token]);
 
   function handleLogout() {
     logout();
@@ -40,11 +59,11 @@ function Navbar() {
     ? currentUser.role === 'ADMIN'
       ? [
           { to: '/admin',     label: '🛠️ Admin' },
-          { to: '/chat',      label: '💬 Chat' },
+          { to: '/chat',      label: '💬 Chat', unread: unreadCount },
         ]
       : [
           { to: '/dashboard', label: '📊 Dashboard' },
-          { to: '/chat',      label: '💬 Chat' },
+          { to: '/chat',      label: '💬 Chat', unread: unreadCount },
         ]
     : [
         { to: '/login',    label: 'Login' },
@@ -87,13 +106,18 @@ function Navbar() {
                 <Link
                   key={link.to}
                   to={link.to}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                     location.pathname === link.to
                       ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
                       : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
                   }`}
                 >
                   {link.label}
+                  {link.unread > 0 && (
+                    <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center">
+                      {link.unread > 99 ? '99+' : link.unread}
+                    </span>
+                  )}
                 </Link>
               ))}
             </div>
@@ -198,13 +222,18 @@ function Navbar() {
                 key={link.to}
                 to={link.to}
                 onClick={() => setMenuOpen(false)}
-                className={`block px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                   location.pathname === link.to
                     ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
                     : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
                 }`}
               >
-                {link.label}
+                <span>{link.label}</span>
+                {link.unread > 0 && (
+                  <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center">
+                    {link.unread > 99 ? '99+' : link.unread}
+                  </span>
+                )}
               </Link>
             ))}
             {currentUser && (

@@ -29,6 +29,12 @@ public class ChatSession {
     @Column("accepted_at")
     private String acceptedAt;
 
+    @Column("unread_user")
+    private int unreadUser;
+
+    @Column("unread_admin")
+    private int unreadAdmin;
+
     public ChatSession() {}
 
     public ChatSession(Long userId, String refType, Long refId, String subject, String status, String createdAt) {
@@ -56,4 +62,8 @@ public class ChatSession {
     public void setCreatedAt(String createdAt) { this.createdAt = createdAt; }
     public String getAcceptedAt() { return acceptedAt; }
     public void setAcceptedAt(String acceptedAt) { this.acceptedAt = acceptedAt; }
+    public int getUnreadUser() { return unreadUser; }
+    public void setUnreadUser(int unreadUser) { this.unreadUser = unreadUser; }
+    public int getUnreadAdmin() { return unreadAdmin; }
+    public void setUnreadAdmin(int unreadAdmin) { this.unreadAdmin = unreadAdmin; }
 }

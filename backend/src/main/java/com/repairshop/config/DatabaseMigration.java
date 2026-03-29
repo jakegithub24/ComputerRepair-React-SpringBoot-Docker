@@ -34,8 +34,12 @@ public class DatabaseMigration implements ApplicationRunner {
             "subject TEXT NOT NULL, " +
             "status TEXT NOT NULL DEFAULT 'PENDING', " +
             "created_at TEXT NOT NULL, " +
-            "accepted_at TEXT DEFAULT NULL"
+            "accepted_at TEXT DEFAULT NULL, " +
+            "unread_user INTEGER NOT NULL DEFAULT 0, " +
+            "unread_admin INTEGER NOT NULL DEFAULT 0"
         );
+        addColumnIfMissing("chat_sessions", "unread_user", "INTEGER NOT NULL DEFAULT 0");
+        addColumnIfMissing("chat_sessions", "unread_admin", "INTEGER NOT NULL DEFAULT 0");
         createTableIfMissing("chat_messages",
             "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
             "session_id INTEGER NOT NULL, " +

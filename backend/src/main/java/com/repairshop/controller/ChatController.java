@@ -1,8 +1,7 @@
 package com.repairshop.controller;
 
 import com.repairshop.dto.*;
-import com.repairshop.service.ChatService;
-import io.jsonwebtoken.Claims;
+import com.repairshop.service.ChatService;import io.jsonwebtoken.Claims;
 import org.springframework.http.HttpStatus;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -82,6 +81,21 @@ public class ChatController {
     @PostMapping("/admin/sessions/{sessionId}/close")
     public ChatSessionResponse closeSession(@PathVariable Long sessionId) {
         return chatService.closeSession(sessionId);
+    }
+
+    /** Admin: initiate a chat for a specific order */
+    @PostMapping("/admin/sessions")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ChatSessionResponse adminCreateSession(@RequestBody AdminCreateChatRequest req) {
+        return chatService.adminCreateSession(req);
+    }
+
+    /** Mark session as read (resets unread count for caller's role) */
+    @PostMapping("/sessions/{sessionId}/read")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void markRead(@PathVariable Long sessionId) {
+        String role = extractRole();
+        chatService.markRead(sessionId, role);
     }
 
     // ── WebSocket message handlers ──────────────────────────────────────────

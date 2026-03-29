@@ -37,14 +37,16 @@ CREATE TABLE IF NOT EXISTS enquiries (
 
 -- Chat sessions table (request-based, linked to order or enquiry)
 CREATE TABLE IF NOT EXISTS chat_sessions (
-    id           INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id      INTEGER NOT NULL,
-    ref_type     TEXT    NOT NULL,  -- 'ORDER' or 'ENQUIRY'
-    ref_id       INTEGER NOT NULL,
-    subject      TEXT    NOT NULL,
-    status       TEXT    NOT NULL DEFAULT 'PENDING',  -- PENDING, ACTIVE, CLOSED
-    created_at   TEXT    NOT NULL,
-    accepted_at  TEXT    DEFAULT NULL,
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id             INTEGER NOT NULL,
+    ref_type            TEXT    NOT NULL,
+    ref_id              INTEGER NOT NULL,
+    subject             TEXT    NOT NULL,
+    status              TEXT    NOT NULL DEFAULT 'PENDING',
+    created_at          TEXT    NOT NULL,
+    accepted_at         TEXT    DEFAULT NULL,
+    unread_user         INTEGER NOT NULL DEFAULT 0,
+    unread_admin        INTEGER NOT NULL DEFAULT 0,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 

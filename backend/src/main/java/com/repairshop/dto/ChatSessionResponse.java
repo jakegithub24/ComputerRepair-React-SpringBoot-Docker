@@ -9,5 +9,7 @@ public record ChatSessionResponse(
     String subject,
     String status,
     String createdAt,
-    String acceptedAt
+    String acceptedAt,
+    int unreadUser,
+    int unreadAdmin
 ) {}

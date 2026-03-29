@@ -15,6 +15,15 @@ const STATUS_COLORS = {
   CLOSED:  'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300',
 };
 
+function UnreadBadge({ count }) {
+  if (!count) return null;
+  return (
+    <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center">
+      {count > 99 ? '99+' : count}
+    </span>
+  );
+}
+
 function ChatPage() {
   const { token, currentUser } = useAuth();
   const [sessions, setSessions] = useState([]);
@@ -23,16 +32,17 @@ function ChatPage() {
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [showNewForm, setShowNewForm] = useState(false);
-  const [newReq, setNewReq] = useState({ refType: 'ORDER', refId: '', subject: '' });
+  const [orders, setOrders] = useState([]);
+  const [newReq, setNewReq] = useState({ orderId: '', subject: '' });
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
   const [connected, setConnected] = useState(false);
 
   const clientRef = useRef(null);
   const subRef = useRef(null);
+  const sessionSubRef = useRef(null);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
-  // Keep a ref to activeSession so callbacks always see the latest value
   const activeSessionRef = useRef(null);
 
   const headers = { Authorization: `Bearer ${token}` };
@@ -42,22 +52,21 @@ function ChatPage() {
   }, []);
 
   const subscribeToSession = useCallback((client, sessionId) => {
-    if (subRef.current) {
-      subRef.current.unsubscribe();
-      subRef.current = null;
-    }
+    if (subRef.current) { subRef.current.unsubscribe(); subRef.current = null; }
+    if (sessionSubRef.current) { sessionSubRef.current.unsubscribe(); sessionSubRef.current = null; }
     if (!sessionId || !client?.connected) return;
     subRef.current = client.subscribe(`/topic/chat/${sessionId}`, (msg) => {
       const message = JSON.parse(msg.body);
-      setMessages((prev) => {
-        if (prev.find((m) => m.id === message.id)) return prev;
-        return [...prev, message];
-      });
+      setMessages((prev) => prev.find((m) => m.id === message.id) ? prev : [...prev, message]);
       scrollToBottom();
+    });
+    sessionSubRef.current = client.subscribe(`/topic/chat/${sessionId}/session`, (msg) => {
+      const updated = JSON.parse(msg.body);
+      setSessions((prev) => prev.map((s) => s.id === updated.id ? updated : s));
+      setActiveSession((prev) => prev?.id === updated.id ? { ...prev, ...updated } : prev);
     });
   }, [scrollToBottom]);
 
-  // Load sessions
   const loadSessions = useCallback(async () => {
     try {
       const res = await axios.get('/api/chat/sessions', { headers });
@@ -65,9 +74,15 @@ function ChatPage() {
     } catch { /* ignore */ }
   }, [token]);
 
-  useEffect(() => { loadSessions(); }, [loadSessions]);
+  const loadOrders = useCallback(async () => {
+    try {
+      const res = await axios.get('/api/orders', { headers });
+      setOrders(res.data);
+    } catch { /* ignore */ }
+  }, [token]);
 
-  // Connect WebSocket once
+  useEffect(() => { loadSessions(); loadOrders(); }, [loadSessions, loadOrders]);
+
   useEffect(() => {
     if (!token) return;
     const client = new Client({
@@ -77,48 +92,32 @@ function ChatPage() {
       onConnect: () => {
         clientRef.current = client;
         setConnected(true);
-
-        // Notifications: chat accepted / closed
         client.subscribe('/user/queue/chat-accepted', (msg) => {
           const session = JSON.parse(msg.body);
-          setSessions((prev) => prev.map((s) => s.id === session.id ? session : s));
-          setActiveSession((prev) => {
-            if (prev?.id === session.id) return session;
-            return prev;
+          setSessions((prev) => {
+            const exists = prev.find((s) => s.id === session.id);
+            return exists ? prev.map((s) => s.id === session.id ? session : s) : [session, ...prev];
           });
+          setActiveSession((prev) => prev?.id === session.id ? session : prev);
         });
         client.subscribe('/user/queue/chat-closed', (msg) => {
           const session = JSON.parse(msg.body);
           setSessions((prev) => prev.map((s) => s.id === session.id ? session : s));
-          setActiveSession((prev) => {
-            if (prev?.id === session.id) return session;
-            return prev;
-          });
+          setActiveSession((prev) => prev?.id === session.id ? session : prev);
         });
-
-        // If a session was already selected before connection was ready, subscribe now
-        if (activeSessionRef.current) {
-          subscribeToSession(client, activeSessionRef.current.id);
-        }
+        if (activeSessionRef.current) subscribeToSession(client, activeSessionRef.current.id);
       },
       onDisconnect: () => setConnected(false),
       onStompError: () => setConnected(false),
     });
     client.activate();
     clientRef.current = client;
-
-    return () => {
-      client.deactivate();
-      setConnected(false);
-    };
+    return () => { client.deactivate(); setConnected(false); };
   }, [token]);
 
-  // Re-subscribe whenever activeSession changes OR connection becomes ready
   useEffect(() => {
     activeSessionRef.current = activeSession;
-    if (connected && clientRef.current) {
-      subscribeToSession(clientRef.current, activeSession?.id);
-    }
+    if (connected && clientRef.current) subscribeToSession(clientRef.current, activeSession?.id);
   }, [activeSession?.id, connected, subscribeToSession]);
 
   async function openSession(session) {
@@ -128,6 +127,8 @@ function ChatPage() {
       const res = await axios.get(`/api/chat/sessions/${session.id}/messages`, { headers });
       setMessages(res.data);
       scrollToBottom();
+      await axios.post(`/api/chat/sessions/${session.id}/read`, {}, { headers });
+      setSessions((prev) => prev.map((s) => s.id === session.id ? { ...s, unreadUser: 0 } : s));
     } catch { /* ignore */ }
   }
 
@@ -138,10 +139,7 @@ function ChatPage() {
     const payload = { messageType: 'TEXT', content: text };
     try {
       if (clientRef.current?.connected) {
-        clientRef.current.publish({
-          destination: `/app/chat/${activeSession.id}/send`,
-          body: JSON.stringify(payload),
-        });
+        clientRef.current.publish({ destination: `/app/chat/${activeSession.id}/send`, body: JSON.stringify(payload) });
       } else {
         await axios.post(`/api/chat/sessions/${activeSession.id}/messages`, payload, { headers });
       }
@@ -158,10 +156,7 @@ function ChatPage() {
       const payload = { messageType: 'IMAGE', content: base64, imageMimeType: file.type };
       try {
         if (clientRef.current?.connected) {
-          clientRef.current.publish({
-            destination: `/app/chat/${activeSession.id}/send`,
-            body: JSON.stringify(payload),
-          });
+          clientRef.current.publish({ destination: `/app/chat/${activeSession.id}/send`, body: JSON.stringify(payload) });
         } else {
           await axios.post(`/api/chat/sessions/${activeSession.id}/messages`, payload, { headers });
         }
@@ -176,18 +171,20 @@ function ChatPage() {
     setCreating(true); setError('');
     try {
       const res = await axios.post('/api/chat/sessions', {
-        refType: newReq.refType,
-        refId: parseInt(newReq.refId) || 0,
+        refType: 'ORDER',
+        refId: parseInt(newReq.orderId),
         subject: newReq.subject,
       }, { headers });
       setSessions((prev) => [res.data, ...prev]);
       setShowNewForm(false);
-      setNewReq({ refType: 'ORDER', refId: '', subject: '' });
+      setNewReq({ orderId: '', subject: '' });
+      openSession(res.data);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to create chat request.');
     } finally { setCreating(false); }
   }
 
+  const totalUnread = sessions.reduce((sum, s) => sum + (s.unreadUser || 0), 0);
   const inputClass = "w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500";
 
   return (
@@ -196,38 +193,49 @@ function ChatPage() {
 
         {/* Sidebar */}
         <div className="w-72 shrink-0 flex flex-col gap-3">
-          {/* Connection indicator */}
-          <div className="flex items-center gap-2 px-1">
-            <span className={`w-2 h-2 rounded-full ${connected ? 'bg-green-500' : 'bg-red-400'}`} />
-            <span className="text-xs text-slate-400 dark:text-slate-500">{connected ? 'Connected' : 'Connecting…'}</span>
+          <div className="flex items-center justify-between px-1">
+            <div className="flex items-center gap-2">
+              <span className={`w-2 h-2 rounded-full ${connected ? 'bg-green-500' : 'bg-red-400'}`} />
+              <span className="text-xs text-slate-400 dark:text-slate-500">{connected ? 'Connected' : 'Connecting…'}</span>
+            </div>
+            {totalUnread > 0 && (
+              <span className="px-2 py-0.5 rounded-full bg-red-500 text-white text-xs font-bold">{totalUnread} unread</span>
+            )}
           </div>
 
           <button type="button" onClick={() => setShowNewForm((v) => !v)}
-            className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-sm transition-colors">
+            disabled={orders.length === 0}
+            title={orders.length === 0 ? 'Submit an order first to start a chat' : ''}
+            className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 dark:disabled:bg-slate-700 disabled:cursor-not-allowed text-white font-semibold rounded-xl text-sm transition-colors">
             {showNewForm ? '✕ Cancel' : '+ New Chat Request'}
           </button>
+
+          {orders.length === 0 && !showNewForm && (
+            <p className="text-xs text-center text-slate-400 dark:text-slate-500 px-2">
+              Submit an order first to start a chat with admin.
+            </p>
+          )}
 
           {showNewForm && (
             <form onSubmit={createSession} className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow border border-slate-100 dark:border-slate-700 space-y-3">
               <div>
-                <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Type</label>
-                <select value={newReq.refType} onChange={(e) => setNewReq((p) => ({ ...p, refType: e.target.value }))} className={inputClass}>
-                  <option value="ORDER">Order</option>
-                  <option value="ENQUIRY">Enquiry</option>
+                <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Select Your Order</label>
+                <select value={newReq.orderId} onChange={(e) => setNewReq((p) => ({ ...p, orderId: e.target.value }))} className={inputClass} required>
+                  <option value="">— Choose an order —</option>
+                  {orders.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      #{o.id} · {o.serviceType} · {o.deviceDescription.slice(0, 25)}{o.deviceDescription.length > 25 ? '…' : ''}
+                    </option>
+                  ))}
                 </select>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Reference ID</label>
-                <input type="number" value={newReq.refId} onChange={(e) => setNewReq((p) => ({ ...p, refId: e.target.value }))}
-                  placeholder="Order/Enquiry ID" className={inputClass} />
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Subject</label>
                 <input type="text" value={newReq.subject} onChange={(e) => setNewReq((p) => ({ ...p, subject: e.target.value }))}
-                  placeholder="What do you need help with?" className={inputClass} />
+                  placeholder="What do you need help with?" className={inputClass} required />
               </div>
               {error && <p className="text-xs text-red-500">{error}</p>}
-              <button type="submit" disabled={creating}
+              <button type="submit" disabled={creating || !newReq.orderId}
                 className="w-full py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-semibold rounded-lg text-sm transition-colors">
                 {creating ? 'Sending…' : 'Send Request'}
               </button>
@@ -246,8 +254,11 @@ function ChatPage() {
                     : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
                 }`}>
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">{s.refType} #{s.refId}</span>
-                  <span className={`px-1.5 py-0.5 rounded text-xs font-semibold ${STATUS_COLORS[s.status]}`}>{s.status}</span>
+                  <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Order #{s.refId}</span>
+                  <div className="flex items-center gap-1.5">
+                    <UnreadBadge count={s.unreadUser} />
+                    <span className={`px-1.5 py-0.5 rounded text-xs font-semibold ${STATUS_COLORS[s.status]}`}>{s.status}</span>
+                  </div>
                 </div>
                 <p className="text-sm font-medium text-slate-800 dark:text-white truncate">{s.subject}</p>
               </button>
@@ -261,7 +272,7 @@ function ChatPage() {
             <div className="flex-1 flex items-center justify-center text-slate-400 dark:text-slate-500">
               <div className="text-center">
                 <div className="text-5xl mb-3">💬</div>
-                <p>Select a chat session or create a new request.</p>
+                <p>Select a chat or create a new request.</p>
               </div>
             </div>
           ) : (
@@ -269,7 +280,7 @@ function ChatPage() {
               <div className="px-5 py-3 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
                 <div>
                   <p className="font-semibold text-slate-800 dark:text-white">{activeSession.subject}</p>
-                  <p className="text-xs text-slate-400 dark:text-slate-500">{activeSession.refType} #{activeSession.refId}</p>
+                  <p className="text-xs text-slate-400 dark:text-slate-500">Order #{activeSession.refId}</p>
                 </div>
                 <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${STATUS_COLORS[activeSession.status]}`}>
                   {activeSession.status}
@@ -292,9 +303,7 @@ function ChatPage() {
                   const isMe = msg.senderId === currentUser?.id;
                   return (
                     <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`max-w-[70%] rounded-2xl px-4 py-2.5 ${
-                        isMe ? 'bg-blue-600 text-white rounded-br-sm' : 'bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-white rounded-bl-sm'
-                      }`}>
+                      <div className={`max-w-[70%] rounded-2xl px-4 py-2.5 ${isMe ? 'bg-blue-600 text-white rounded-br-sm' : 'bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-white rounded-bl-sm'}`}>
                         {!isMe && <p className="text-xs font-semibold mb-1 opacity-70">{msg.senderUsername}</p>}
                         {msg.messageType === 'IMAGE' ? (
                           <img src={`data:${msg.imageMimeType};base64,${msg.content}`} alt="shared" className="max-w-full rounded-lg max-h-64 object-contain" />
@@ -313,16 +322,11 @@ function ChatPage() {
                 <form onSubmit={sendText} className="px-4 py-3 border-t border-slate-100 dark:border-slate-700 flex items-center gap-2">
                   <input type="file" ref={fileInputRef} accept="image/*" onChange={sendImage} className="hidden" />
                   <button type="button" onClick={() => fileInputRef.current?.click()}
-                    className="p-2 text-slate-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors" title="Send image">
-                    🖼️
-                  </button>
-                  <input type="text" value={text} onChange={(e) => setText(e.target.value)}
-                    placeholder="Type a message…"
+                    className="p-2 text-slate-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors" title="Send image">🖼️</button>
+                  <input type="text" value={text} onChange={(e) => setText(e.target.value)} placeholder="Type a message…"
                     className="flex-1 px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition" />
                   <button type="submit" disabled={sending || !text.trim()}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-semibold rounded-xl text-sm transition-colors">
-                    Send
-                  </button>
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-semibold rounded-xl text-sm transition-colors">Send</button>
                 </form>
               )}
             </>
