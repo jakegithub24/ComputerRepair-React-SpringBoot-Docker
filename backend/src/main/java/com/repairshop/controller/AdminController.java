@@ -32,15 +32,23 @@ public class AdminController {
     }
 
     /**
-     * GET /api/admin/users — paginated list of all registered users.
-     * Query params: page (default 0), size (default 20).
-     * Requirements: 11.1
+     * GET /api/admin/users — paginated list of active (non-deleted) users.
      */
     @GetMapping("/users")
     public PageResponse<UserResponse> listUsers(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         return userService.listAllUsers(page, size);
+    }
+
+    /**
+     * GET /api/admin/users/deleted — paginated list of soft-deleted users.
+     */
+    @GetMapping("/users/deleted")
+    public PageResponse<UserResponse> listDeletedUsers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return userService.listDeletedUsers(page, size);
     }
 
     /**

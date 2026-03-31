@@ -51,16 +51,14 @@ public class UserService {
     }
 
     /**
-     * Logically delete the authenticated user's own account by setting deleted_at timestamp.
-     * The record remains in the database but the account is deactivated.
-     * Throws AuthenticationException (401) if the user is not found.
+     * Logically delete the authenticated user's own account.
+     * Mangles username/email with the user's ID so the originals are freed for re-registration.
      * Requirements: 4.2
      */
     public void deleteOwnAccount(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new AuthenticationException("User not found"));
-        user.setDeletedAt(Instant.now().toString());
-        userRepository.save(user);
+        mangleAndSoftDelete(user);
     }
 
     /**
@@ -69,17 +67,27 @@ public class UserService {
      */
     public PageResponse<UserResponse> listAllUsers(int page, int size) {
         List<User> all = userRepository.findAll();
+        return paginate(all, page, size);
+    }
+
+    /**
+     * Return a paginated list of soft-deleted users (admin only).
+     */
+    public PageResponse<UserResponse> listDeletedUsers(int page, int size) {
+        List<User> deleted = userRepository.findDeleted();
+        return paginate(deleted, page, size);
+    }
+
+    private PageResponse<UserResponse> paginate(List<User> all, int page, int size) {
         long total = all.size();
         int totalPages = (int) Math.ceil((double) total / size);
         int fromIndex = page * size;
         int toIndex = (int) Math.min(fromIndex + size, total);
-
         List<UserResponse> content = (fromIndex >= total)
                 ? List.of()
                 : all.subList(fromIndex, toIndex).stream()
                         .map(u -> new UserResponse(u.getId(), u.getUsername(), u.getEmail(), u.getRole(), u.getCreatedAt(), u.getDeletedAt()))
                         .toList();
-
         return new PageResponse<>(content, page, size, total, totalPages);
     }
 
@@ -98,11 +106,23 @@ public class UserService {
 
     /**
      * Logically deactivate a user by ID (admin only — soft delete).
-     * Sets deleted_at without removing the record.
+     * Mangles username/email so the originals are freed for re-registration.
      */
     public void deactivateUserById(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
+        mangleAndSoftDelete(user);
+    }
+
+    /**
+     * Soft-deletes a user by setting deleted_at and mangling username/email
+     * so the original values are freed for re-use by new registrations.
+     * Format: "deleted_<id>_<original>"
+     */
+    private void mangleAndSoftDelete(User user) {
+        String prefix = "deleted_" + user.getId() + "_";
+        user.setUsername(prefix + user.getUsername());
+        user.setEmail(prefix + user.getEmail());
         user.setDeletedAt(Instant.now().toString());
         userRepository.save(user);
     }

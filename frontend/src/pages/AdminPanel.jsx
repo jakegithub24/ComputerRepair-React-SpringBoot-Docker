@@ -64,6 +64,11 @@ function AdminPanel() {
   const [usersLoading, setUsersLoading] = useState(false);
   const [usersError, setUsersError] = useState('');
 
+  const [deletedUsers, setDeletedUsers] = useState([]);
+  const [deletedUsersPage, setDeletedUsersPage] = useState(0);
+  const [deletedUsersTotalPages, setDeletedUsersTotalPages] = useState(0);
+  const [deletedUsersLoading, setDeletedUsersLoading] = useState(false);
+
   const [orders, setOrders] = useState([]);
   const [ordersPage, setOrdersPage] = useState(0);
   const [ordersTotalPages, setOrdersTotalPages] = useState(0);
@@ -93,6 +98,14 @@ function AdminPanel() {
     } finally { setUsersLoading(false); }
   }, [token, handle401]);
 
+  const fetchDeletedUsers = useCallback(async (page = 0) => {
+    setDeletedUsersLoading(true);
+    try {
+      const res = await axios.get(`/api/admin/users/deleted?page=${page}&size=20`, { headers });
+      setDeletedUsers(res.data.content); setDeletedUsersTotalPages(res.data.totalPages);
+    } catch { /* ignore */ } finally { setDeletedUsersLoading(false); }
+  }, [token]);
+
   const fetchOrders = useCallback(async (page = 0) => {
     setOrdersLoading(true); setOrdersError('');
     try {
@@ -116,6 +129,7 @@ function AdminPanel() {
   }, [token, handle401]);
 
   useEffect(() => { fetchUsers(usersPage); }, [usersPage]);
+  useEffect(() => { fetchDeletedUsers(deletedUsersPage); }, [deletedUsersPage]);
   useEffect(() => { fetchOrders(ordersPage); }, [ordersPage]);
   useEffect(() => { fetchEnquiries(enquiriesPage); }, [enquiriesPage]);
 
@@ -128,6 +142,7 @@ function AdminPanel() {
       }
       setDeleteConfirm(null);
       fetchUsers(usersPage);
+      fetchDeletedUsers(deletedUsersPage);
     } catch (err) {
       if (err.response?.status === 401) handle401();
       else setUsersError(hardDelete ? 'Failed to delete user.' : 'Failed to deactivate user.');
@@ -226,58 +241,45 @@ function AdminPanel() {
 
         {/* Users Tab */}
         {activeTab === 'users' && (
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow border border-slate-100 dark:border-slate-700">
-            <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700">
-              <h2 className="text-lg font-bold text-slate-800 dark:text-white">Registered Users</h2>
-            </div>
-            {usersError && <div className="mx-6 mt-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-sm">{usersError}</div>}
-            {usersLoading ? (
-              <div className="py-16 text-center text-slate-400 dark:text-slate-500">Loading…</div>
-            ) : users.length === 0 ? (
-              <div className="py-16 text-center text-slate-400 dark:text-slate-500">No users found.</div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-slate-50 dark:bg-slate-700/50 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
-                      <th className="px-6 py-3">ID</th>
-                      <th className="px-6 py-3">Username</th>
-                      <th className="px-6 py-3">Email</th>
-                      <th className="px-6 py-3">Role</th>
-                      <th className="px-6 py-3">Registered</th>
-                      <th className="px-6 py-3">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                    {users.map((user) => (
-                      <tr key={user.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
-                        <td className="px-6 py-3 text-slate-400 dark:text-slate-500">#{user.id}</td>
-                        <td className="px-6 py-3 font-medium text-slate-800 dark:text-white">{user.username}</td>
-                        <td className="px-6 py-3 text-slate-500 dark:text-slate-400">{user.email}</td>
-                        <td className="px-6 py-3">
-                          <span className={`px-2 py-0.5 rounded text-xs font-semibold ${user.role === 'ADMIN' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'}`}>
-                            {user.role}
-                          </span>
-                        </td>
-                        <td className="px-6 py-3 text-slate-400 dark:text-slate-500 text-xs">{formatDate(user.createdAt)}</td>
-                        <td className="px-6 py-3">
-                          {user.deletedAt ? (
-                            <div className="flex items-center gap-2">
-                              <span className="px-2 py-0.5 text-xs font-semibold bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400 rounded-full">
-                                Deactivated
-                              </span>
-                              {user.role !== 'ADMIN' && (
-                                <button
-                                  type="button"
-                                  onClick={() => setDeleteConfirm({ ...user, hardDelete: true })}
-                                  className="px-3 py-1 text-xs font-semibold text-red-600 dark:text-red-400 border border-red-300 dark:border-red-700 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                                >
-                                  Permanently Delete
-                                </button>
-                              )}
-                            </div>
-                          ) : user.role !== 'ADMIN' ? (
-                            <div className="flex items-center gap-2">
+          <div className="space-y-6">
+            {/* Active Users */}
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow border border-slate-100 dark:border-slate-700">
+              <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+                <h2 className="text-lg font-bold text-slate-800 dark:text-white">Active Users</h2>
+                <span className="text-xs text-slate-400 dark:text-slate-500">{users.length} shown</span>
+              </div>
+              {usersError && <div className="mx-6 mt-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-sm">{usersError}</div>}
+              {usersLoading ? (
+                <div className="py-12 text-center text-slate-400 dark:text-slate-500">Loading…</div>
+              ) : users.length === 0 ? (
+                <div className="py-12 text-center text-slate-400 dark:text-slate-500">No active users.</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-slate-50 dark:bg-slate-700/50 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                        <th className="px-6 py-3">ID</th>
+                        <th className="px-6 py-3">Username</th>
+                        <th className="px-6 py-3">Email</th>
+                        <th className="px-6 py-3">Role</th>
+                        <th className="px-6 py-3">Registered</th>
+                        <th className="px-6 py-3">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                      {users.map((user) => (
+                        <tr key={user.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+                          <td className="px-6 py-3 text-slate-400 dark:text-slate-500">#{user.id}</td>
+                          <td className="px-6 py-3 font-medium text-slate-800 dark:text-white">{user.username}</td>
+                          <td className="px-6 py-3 text-slate-500 dark:text-slate-400">{user.email}</td>
+                          <td className="px-6 py-3">
+                            <span className={`px-2 py-0.5 rounded text-xs font-semibold ${user.role === 'ADMIN' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'}`}>
+                              {user.role}
+                            </span>
+                          </td>
+                          <td className="px-6 py-3 text-slate-400 dark:text-slate-500 text-xs">{formatDate(user.createdAt)}</td>
+                          <td className="px-6 py-3">
+                            {user.role !== 'ADMIN' && (
                               <button
                                 type="button"
                                 onClick={() => setDeleteConfirm({ ...user, hardDelete: false })}
@@ -285,15 +287,83 @@ function AdminPanel() {
                               >
                                 Deactivate
                               </button>
-                            </div>
-                          ) : null}
-                        </td>                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              <Pagination page={usersPage} totalPages={usersTotalPages} onPrev={() => setUsersPage((p) => p - 1)} onNext={() => setUsersPage((p) => p + 1)} />
+            </div>
+
+            {/* Deleted Users */}
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow border border-red-100 dark:border-red-900/40">
+              <div className="px-6 py-4 border-b border-red-100 dark:border-red-900/40 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-bold text-slate-800 dark:text-white">Deleted Users</h2>
+                  {deletedUsers.length > 0 && (
+                    <span className="px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 text-xs font-semibold">
+                      {deletedUsers.length}
+                    </span>
+                  )}
+                </div>
+                <span className="text-xs text-slate-400 dark:text-slate-500">Awaiting permanent deletion</span>
               </div>
-            )}
-            <Pagination page={usersPage} totalPages={usersTotalPages} onPrev={() => setUsersPage((p) => p - 1)} onNext={() => setUsersPage((p) => p + 1)} />
+              {deletedUsersLoading ? (
+                <div className="py-12 text-center text-slate-400 dark:text-slate-500">Loading…</div>
+              ) : deletedUsers.length === 0 ? (
+                <div className="py-12 text-center text-slate-400 dark:text-slate-500">
+                  <div className="text-3xl mb-2">✅</div>
+                  <p>No deleted users.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-red-50 dark:bg-red-900/20 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                        <th className="px-6 py-3">ID</th>
+                        <th className="px-6 py-3">Original Username</th>
+                        <th className="px-6 py-3">Role</th>
+                        <th className="px-6 py-3">Registered</th>
+                        <th className="px-6 py-3">Deleted At</th>
+                        <th className="px-6 py-3">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-red-50 dark:divide-red-900/20">
+                      {deletedUsers.map((user) => {
+                        // Strip the "deleted_<id>_" prefix to show original username
+                        const originalUsername = user.username.replace(/^deleted_\d+_/, '');
+                        return (
+                          <tr key={user.id} className="hover:bg-red-50/50 dark:hover:bg-red-900/10 transition-colors">
+                            <td className="px-6 py-3 text-slate-400 dark:text-slate-500">#{user.id}</td>
+                            <td className="px-6 py-3 font-medium text-slate-600 dark:text-slate-300 line-through opacity-60">{originalUsername}</td>
+                            <td className="px-6 py-3">
+                              <span className="px-2 py-0.5 rounded text-xs font-semibold bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400">
+                                {user.role}
+                              </span>
+                            </td>
+                            <td className="px-6 py-3 text-slate-400 dark:text-slate-500 text-xs">{formatDate(user.createdAt)}</td>
+                            <td className="px-6 py-3 text-red-400 dark:text-red-500 text-xs">{formatDate(user.deletedAt)}</td>
+                            <td className="px-6 py-3">
+                              <button
+                                type="button"
+                                onClick={() => setDeleteConfirm({ ...user, username: originalUsername, hardDelete: true })}
+                                className="px-3 py-1 text-xs font-semibold text-red-600 dark:text-red-400 border border-red-300 dark:border-red-700 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                              >
+                                Permanently Delete
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              <Pagination page={deletedUsersPage} totalPages={deletedUsersTotalPages} onPrev={() => setDeletedUsersPage((p) => p - 1)} onNext={() => setDeletedUsersPage((p) => p + 1)} />
+            </div>
           </div>
         )}
 

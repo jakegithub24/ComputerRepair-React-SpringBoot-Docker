@@ -22,6 +22,9 @@ public interface UserRepository extends CrudRepository<User, Long> {
     @Query("SELECT * FROM users WHERE deleted_at IS NULL")
     List<User> findAll();
 
+    @Query("SELECT * FROM users WHERE deleted_at IS NOT NULL")
+    List<User> findDeleted();
+
     @Query("SELECT * FROM users")
     List<User> findAllIncludingDeleted();
 }
