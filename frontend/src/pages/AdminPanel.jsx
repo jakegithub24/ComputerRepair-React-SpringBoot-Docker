@@ -1,6 +1,8 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { Client } from '@stomp/stompjs';
+import SockJS from 'sockjs-client';
 import { useAuth } from '../context/AuthContext';
 import AdminChatPanel from './AdminChatPanel';
 
@@ -83,6 +85,7 @@ function AdminPanel() {
 
   const [deleteConfirm, setDeleteConfirm] = useState(null);
 
+  const stompRef = useRef(null);
   const headers = { Authorization: `Bearer ${token}` };
 
   const handle401 = useCallback(() => { navigate('/login'); }, [navigate]);
@@ -133,6 +136,61 @@ function AdminPanel() {
   useEffect(() => { fetchOrders(ordersPage); }, [ordersPage]);
   useEffect(() => { fetchEnquiries(enquiriesPage); }, [enquiriesPage]);
 
+  // Real-time WebSocket updates
+  useEffect(() => {
+    if (!token) return;
+    const client = new Client({
+      webSocketFactory: () => new SockJS('/ws'),
+      connectHeaders: { Authorization: `Bearer ${token}` },
+      reconnectDelay: 3000,
+      onConnect: () => {
+        stompRef.current = client;
+
+        // New user registered
+        client.subscribe('/topic/admin/users/new', (msg) => {
+          const newUser = JSON.parse(msg.body);
+          setUsers((prev) => prev.find((u) => u.id === newUser.id) ? prev : [newUser, ...prev]);
+        });
+
+        // User soft-deleted (moved to deleted list)
+        client.subscribe('/topic/admin/users/deleted', (msg) => {
+          const deletedId = JSON.parse(msg.body);
+          setUsers((prev) => prev.filter((u) => u.id !== deletedId));
+          // Refresh deleted list to get the mangled record
+          fetchDeletedUsers(0);
+        });
+
+        // User permanently deleted
+        client.subscribe('/topic/admin/users/removed', (msg) => {
+          const removedId = JSON.parse(msg.body);
+          setDeletedUsers((prev) => prev.filter((u) => u.id !== removedId));
+        });
+
+        // Order created or status updated — AdminOrderResponse with username
+        client.subscribe('/topic/admin/orders', (msg) => {
+          const updated = JSON.parse(msg.body);
+          setOrders((prev) => {
+            const exists = prev.find((o) => o.id === updated.id);
+            if (exists) return prev.map((o) => o.id === updated.id ? { ...o, status: updated.status } : o);
+            return [updated, ...prev]; // new order — already has username
+          });
+        });
+
+        // Enquiry created or status updated — AdminEnquiryResponse with username
+        client.subscribe('/topic/admin/enquiries', (msg) => {
+          const updated = JSON.parse(msg.body);
+          setEnquiries((prev) => {
+            const exists = prev.find((e) => e.id === updated.id);
+            if (exists) return prev.map((e) => e.id === updated.id ? { ...e, status: updated.status } : e);
+            return [updated, ...prev];
+          });
+        });
+      },
+    });
+    client.activate();
+    return () => client.deactivate();
+  }, [token]);
+
   async function handleDeleteUser(id, hardDelete) {
     try {
       if (hardDelete) {
@@ -149,22 +207,31 @@ function AdminPanel() {
     }
   }
   async function handleOrderStatusChange(id, status) {
+    // Optimistic update — change state immediately, no refetch needed
+    // WebSocket will also push the update back confirming it
+    setOrders((prev) => prev.map((o) => o.id === id ? { ...o, status } : o));
     try {
       await axios.patch(`/api/admin/orders/${id}/status`, { status }, { headers });
-      fetchOrders(ordersPage);
     } catch (err) {
       if (err.response?.status === 401) handle401();
-      else setOrdersError('Failed to update order status.');
+      else {
+        setOrdersError('Failed to update order status.');
+        fetchOrders(ordersPage); // revert on error
+      }
     }
   }
 
   async function handleEnquiryStatusChange(id, status) {
+    // Optimistic update
+    setEnquiries((prev) => prev.map((e) => e.id === id ? { ...e, status } : e));
     try {
       await axios.patch(`/api/admin/enquiries/${id}/status`, { status }, { headers });
-      fetchEnquiries(enquiriesPage);
     } catch (err) {
       if (err.response?.status === 401) handle401();
-      else setEnquiriesError('Failed to update enquiry status.');
+      else {
+        setEnquiriesError('Failed to update enquiry status.');
+        fetchEnquiries(enquiriesPage); // revert on error
+      }
     }
   }
 

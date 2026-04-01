@@ -32,10 +32,12 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
                 String token = authHeader.substring(7);
                 try {
                     Claims claims = authService.validateToken(token);
-                    String username = claims.getSubject();
+                    // Use userId as the principal name so convertAndSendToUser(userId, ...) routes correctly
+                    Long userId = ((Number) claims.get("userId")).longValue();
+                    String principalName = String.valueOf(userId);
                     String role = claims.get("role", String.class);
                     UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
-                            username, null, List.of(new SimpleGrantedAuthority("ROLE_" + role)));
+                            principalName, null, List.of(new SimpleGrantedAuthority("ROLE_" + role)));
                     auth.setDetails(claims);
                     accessor.setUser(auth);
                 } catch (Exception ignored) {

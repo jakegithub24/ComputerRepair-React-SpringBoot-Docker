@@ -10,6 +10,7 @@ import com.repairshop.model.Order;
 import com.repairshop.model.User;
 import com.repairshop.repository.OrderRepository;
 import com.repairshop.repository.UserRepository;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -25,10 +26,13 @@ public class OrderService {
 
     private final OrderRepository orderRepository;
     private final UserRepository userRepository;
+    private final SimpMessagingTemplate messagingTemplate;
 
-    public OrderService(OrderRepository orderRepository, UserRepository userRepository) {
+    public OrderService(OrderRepository orderRepository, UserRepository userRepository,
+                        SimpMessagingTemplate messagingTemplate) {
         this.orderRepository = orderRepository;
         this.userRepository = userRepository;
+        this.messagingTemplate = messagingTemplate;
     }
 
     /**
@@ -56,7 +60,14 @@ public class OrderService {
                 "Pending",
                 Instant.now().toString()
         );
-        return orderRepository.save(order);
+        Order saved = orderRepository.save(order);
+        // Notify admin — include username for the admin panel
+        String username = userRepository.findById(userId).map(User::getUsername).orElse("unknown");
+        messagingTemplate.convertAndSend("/topic/admin/orders",
+                new AdminOrderResponse(saved.getId(), saved.getUserId(), username,
+                        saved.getServiceType(), saved.getDeviceDescription(), saved.getNotes(),
+                        saved.getStatus(), saved.getCreatedAt()));
+        return saved;
     }
 
     /**
@@ -108,6 +119,16 @@ public class OrderService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + orderId));
         order.setStatus(status);
-        return orderRepository.save(order);
+        Order saved = orderRepository.save(order);
+        // Push real-time update to the order owner
+        messagingTemplate.convertAndSendToUser(
+                String.valueOf(saved.getUserId()), "/queue/order-update", saved);
+        // Notify admin panel with full response including username
+        String username = userRepository.findById(saved.getUserId()).map(User::getUsername).orElse("unknown");
+        messagingTemplate.convertAndSend("/topic/admin/orders",
+                new AdminOrderResponse(saved.getId(), saved.getUserId(), username,
+                        saved.getServiceType(), saved.getDeviceDescription(), saved.getNotes(),
+                        saved.getStatus(), saved.getCreatedAt()));
+        return saved;
     }
 }

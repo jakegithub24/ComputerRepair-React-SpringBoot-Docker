@@ -9,6 +9,7 @@ import com.repairshop.exception.ResourceNotFoundException;
 import com.repairshop.exception.ValidationException;
 import com.repairshop.model.User;
 import com.repairshop.repository.UserRepository;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -26,39 +27,38 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final AuthService authService;
+    private final SimpMessagingTemplate messagingTemplate;
 
-    public UserService(UserRepository userRepository, AuthService authService) {
+    public UserService(UserRepository userRepository, AuthService authService,
+                       SimpMessagingTemplate messagingTemplate) {
         this.userRepository = userRepository;
         this.authService = authService;
+        this.messagingTemplate = messagingTemplate;
     }
 
     public UserResponse register(RegisterRequest req) {
         if (userRepository.existsByUsername(req.username())) {
             throw new DuplicateUsernameException("Username already taken");
         }
-
         if (!EMAIL_PATTERN.matcher(req.email()).matches()) {
             throw new ValidationException("Invalid email format");
         }
-
         validatePasswordComplexity(req.password());
-
         String hash = authService.hashPassword(req.password());
         User user = new User(req.username(), req.email(), hash, "USER", Instant.now().toString());
         User saved = userRepository.save(user);
-
-        return new UserResponse(saved.getId(), saved.getUsername(), saved.getEmail(), saved.getRole(), saved.getCreatedAt(), saved.getDeletedAt());
+        UserResponse response = toResponse(saved);
+        // Notify admin of new registration
+        messagingTemplate.convertAndSend("/topic/admin/users/new", response);
+        return response;
     }
 
-    /**
-     * Logically delete the authenticated user's own account.
-     * Mangles username/email with the user's ID so the originals are freed for re-registration.
-     * Requirements: 4.2
-     */
     public void deleteOwnAccount(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new AuthenticationException("User not found"));
         mangleAndSoftDelete(user);
+        // Notify admin: user moved to deleted list
+        messagingTemplate.convertAndSend("/topic/admin/users/deleted", userId);
     }
 
     /**
@@ -85,9 +85,7 @@ public class UserService {
         int toIndex = (int) Math.min(fromIndex + size, total);
         List<UserResponse> content = (fromIndex >= total)
                 ? List.of()
-                : all.subList(fromIndex, toIndex).stream()
-                        .map(u -> new UserResponse(u.getId(), u.getUsername(), u.getEmail(), u.getRole(), u.getCreatedAt(), u.getDeletedAt()))
-                        .toList();
+                : all.subList(fromIndex, toIndex).stream().map(this::toResponse).toList();
         return new PageResponse<>(content, page, size, total, totalPages);
     }
 
@@ -102,16 +100,14 @@ public class UserService {
             throw new ResourceNotFoundException("User not found with id: " + userId);
         }
         userRepository.deleteById(userId);
+        messagingTemplate.convertAndSend("/topic/admin/users/removed", userId);
     }
 
-    /**
-     * Logically deactivate a user by ID (admin only — soft delete).
-     * Mangles username/email so the originals are freed for re-registration.
-     */
     public void deactivateUserById(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
         mangleAndSoftDelete(user);
+        messagingTemplate.convertAndSend("/topic/admin/users/deleted", userId);
     }
 
     /**
@@ -125,6 +121,10 @@ public class UserService {
         user.setEmail(prefix + user.getEmail());
         user.setDeletedAt(Instant.now().toString());
         userRepository.save(user);
+    }
+
+    private UserResponse toResponse(User u) {
+        return new UserResponse(u.getId(), u.getUsername(), u.getEmail(), u.getRole(), u.getCreatedAt(), u.getDeletedAt());
     }
 
     /**

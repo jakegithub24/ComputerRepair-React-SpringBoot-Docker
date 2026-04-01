@@ -10,6 +10,7 @@ import com.repairshop.model.Enquiry;
 import com.repairshop.model.User;
 import com.repairshop.repository.EnquiryRepository;
 import com.repairshop.repository.UserRepository;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -24,10 +25,13 @@ public class EnquiryService {
 
     private final EnquiryRepository enquiryRepository;
     private final UserRepository userRepository;
+    private final SimpMessagingTemplate messagingTemplate;
 
-    public EnquiryService(EnquiryRepository enquiryRepository, UserRepository userRepository) {
+    public EnquiryService(EnquiryRepository enquiryRepository, UserRepository userRepository,
+                          SimpMessagingTemplate messagingTemplate) {
         this.enquiryRepository = enquiryRepository;
         this.userRepository = userRepository;
+        this.messagingTemplate = messagingTemplate;
     }
 
     /**
@@ -51,7 +55,13 @@ public class EnquiryService {
                 "Open",
                 Instant.now().toString()
         );
-        return enquiryRepository.save(enquiry);
+        Enquiry saved = enquiryRepository.save(enquiry);
+        // Notify admin — include username for the admin panel
+        String username = userRepository.findById(userId).map(User::getUsername).orElse("unknown");
+        messagingTemplate.convertAndSend("/topic/admin/enquiries",
+                new AdminEnquiryResponse(saved.getId(), saved.getUserId(), username,
+                        saved.getSubject(), saved.getMessage(), saved.getStatus(), saved.getCreatedAt()));
+        return saved;
     }
 
     /**
@@ -102,6 +112,15 @@ public class EnquiryService {
         Enquiry enquiry = enquiryRepository.findById(enquiryId)
                 .orElseThrow(() -> new ResourceNotFoundException("Enquiry not found with id: " + enquiryId));
         enquiry.setStatus(status);
-        return enquiryRepository.save(enquiry);
+        Enquiry saved = enquiryRepository.save(enquiry);
+        // Push real-time update to the enquiry owner
+        messagingTemplate.convertAndSendToUser(
+                String.valueOf(saved.getUserId()), "/queue/enquiry-update", saved);
+        // Notify admin panel with full response including username
+        String username = userRepository.findById(saved.getUserId()).map(User::getUsername).orElse("unknown");
+        messagingTemplate.convertAndSend("/topic/admin/enquiries",
+                new AdminEnquiryResponse(saved.getId(), saved.getUserId(), username,
+                        saved.getSubject(), saved.getMessage(), saved.getStatus(), saved.getCreatedAt()));
+        return saved;
     }
 }
