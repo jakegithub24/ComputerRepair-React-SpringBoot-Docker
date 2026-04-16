@@ -4,9 +4,8 @@ public record AdminOrderResponse(
         Long id,
         Long userId,
         String username,
-        String serviceType,
-        String deviceDescription,
-        String notes,
+        double totalPrice,
+        String shippingAddress,
         String status,
         String createdAt
 ) {}

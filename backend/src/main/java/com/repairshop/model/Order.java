@@ -13,13 +13,11 @@ public class Order {
     @Column("user_id")
     private Long userId;
 
-    @Column("service_type")
-    private String serviceType;
+    @Column("total_price")
+    private double totalPrice;
 
-    @Column("device_description")
-    private String deviceDescription;
-
-    private String notes;
+    @Column("shipping_address")
+    private String shippingAddress;
 
     private String status;
 
@@ -28,11 +26,10 @@ public class Order {
 
     public Order() {}
 
-    public Order(Long userId, String serviceType, String deviceDescription, String notes, String status, String createdAt) {
+    public Order(Long userId, double totalPrice, String shippingAddress, String status, String createdAt) {
         this.userId = userId;
-        this.serviceType = serviceType;
-        this.deviceDescription = deviceDescription;
-        this.notes = notes;
+        this.totalPrice = totalPrice;
+        this.shippingAddress = shippingAddress;
         this.status = status;
         this.createdAt = createdAt;
     }
@@ -43,14 +40,11 @@ public class Order {
     public Long getUserId() { return userId; }
     public void setUserId(Long userId) { this.userId = userId; }
 
-    public String getServiceType() { return serviceType; }
-    public void setServiceType(String serviceType) { this.serviceType = serviceType; }
+    public double getTotalPrice() { return totalPrice; }
+    public void setTotalPrice(double totalPrice) { this.totalPrice = totalPrice; }
 
-    public String getDeviceDescription() { return deviceDescription; }
-    public void setDeviceDescription(String deviceDescription) { this.deviceDescription = deviceDescription; }
-
-    public String getNotes() { return notes; }
-    public void setNotes(String notes) { this.notes = notes; }
+    public String getShippingAddress() { return shippingAddress; }
+    public void setShippingAddress(String shippingAddress) { this.shippingAddress = shippingAddress; }
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }

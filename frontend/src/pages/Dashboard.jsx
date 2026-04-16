@@ -1,27 +1,29 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
-import { Client } from '@stomp/stompjs';
-import SockJS from 'sockjs-client';
 import { useAuth } from '../context/AuthContext';
-import OrderForm from './OrderForm';
-import EnquiryForm from './EnquiryForm';
+import { useOrderUpdates } from '../hooks/useOrderUpdates';
+import { useNotifications } from '../hooks/useNotifications';
 import DeleteAccountModal from '../components/DeleteAccountModal';
 
-const STATUS_COLORS = {
-  Pending:       'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300',
-  'In Progress': 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
-  Completed:     'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300',
-  Cancelled:     'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300',
-  Open:          'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300',
-  Resolved:      'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300',
-  Closed:        'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300',
+const ORDER_STATUS_COLORS = {
+  Pending:    'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300',
+  Dispatched: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
+  Delivered:  'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300',
+  Cancelled:  'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300',
 };
 
-function StatusBadge({ status, animate }) {
-  const cls = STATUS_COLORS[status] || 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300';
+const ENQUIRY_STATUS_COLORS = {
+  Open:       'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300',
+  'In Progress': 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
+  Resolved:   'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300',
+  Closed:     'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300',
+};
+
+function StatusBadge({ status, isOrder, animate }) {
+  const cls = isOrder ? ORDER_STATUS_COLORS[status] : ENQUIRY_STATUS_COLORS[status];
   return (
-    <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold transition-all duration-500 ${cls} ${animate ? 'ring-2 ring-offset-1 ring-blue-400 scale-110' : ''}`}>
+    <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold transition-all duration-500 ${cls || 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'} ${animate ? 'ring-2 ring-offset-1 ring-blue-400 scale-110' : ''}`}>
       {status}
     </span>
   );
@@ -40,14 +42,13 @@ function Dashboard() {
   const [enquiries, setEnquiries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [showOrderForm, setShowOrderForm] = useState(false);
-  const [showEnquiryForm, setShowEnquiryForm] = useState(false);
   const [showDeleteAccount, setShowDeleteAccount] = useState(false);
-  // Track recently updated IDs for highlight animation
   const [updatedOrderIds, setUpdatedOrderIds] = useState(new Set());
   const [updatedEnquiryIds, setUpdatedEnquiryIds] = useState(new Set());
+  const [expandedOrderId, setExpandedOrderId] = useState(null);
 
   const stompRef = useRef(null);
+  const notifications = useNotifications();
 
   const handle401 = useCallback(() => { logout(); navigate('/login'); }, [logout, navigate]);
 
@@ -58,10 +59,10 @@ function Dashboard() {
       const headers = { Authorization: `Bearer ${token}` };
       const [ordersRes, enquiriesRes] = await Promise.all([
         axios.get('/api/orders', { headers }),
-        axios.get('/api/enquiries', { headers }),
+        axios.get('/api/enquiries', { headers }).catch(() => ({ data: [] })),
       ]);
       setOrders(ordersRes.data);
-      setEnquiries(enquiriesRes.data);
+      setEnquiries(enquiriesRes.data || []);
     } catch (err) {
       if (err.response?.status === 401) handle401();
       else setError('Failed to load data. Please try again.');
@@ -72,55 +73,48 @@ function Dashboard() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  // WebSocket: subscribe to real-time order/enquiry status updates
-  useEffect(() => {
-    if (!token) return;
-
-    const client = new Client({
-      webSocketFactory: () => new SockJS('/ws'),
-      connectHeaders: { Authorization: `Bearer ${token}` },
-      reconnectDelay: 3000,
-      onConnect: () => {
-        stompRef.current = client;
-
-        // Order status updated by admin
-        client.subscribe('/user/queue/order-update', (msg) => {
-          const updated = JSON.parse(msg.body);
-          setOrders((prev) => {
-            const exists = prev.find((o) => o.id === updated.id);
-            if (exists) {
-              return prev.map((o) => o.id === updated.id ? { ...o, status: updated.status } : o);
-            }
-            return [updated, ...prev]; // new order added
-          });
-          // Flash highlight
-          setUpdatedOrderIds((prev) => new Set([...prev, updated.id]));
-          setTimeout(() => setUpdatedOrderIds((prev) => {
-            const next = new Set(prev); next.delete(updated.id); return next;
-          }), 2000);
-        });
-
-        // Enquiry status updated by admin
-        client.subscribe('/user/queue/enquiry-update', (msg) => {
-          const updated = JSON.parse(msg.body);
-          setEnquiries((prev) => {
-            const exists = prev.find((e) => e.id === updated.id);
-            if (exists) {
-              return prev.map((e) => e.id === updated.id ? { ...e, status: updated.status } : e);
-            }
-            return [updated, ...prev];
-          });
-          setUpdatedEnquiryIds((prev) => new Set([...prev, updated.id]));
-          setTimeout(() => setUpdatedEnquiryIds((prev) => {
-            const next = new Set(prev); next.delete(updated.id); return next;
-          }), 2000);
-        });
-      },
+  // Order update handlers for WebSocket updates
+  const handleOrderUpdated = useCallback((order) => {
+    setOrders((prev) => {
+      const exists = prev.find((o) => o.id === order.id);
+      if (exists) {
+        return prev.map((o) => o.id === order.id ? { ...o, ...order } : o);
+      }
+      return [order, ...prev];
     });
+    notifications.notifyOrderStatusUpdate(order.id, order.status);
+    setUpdatedOrderIds((prev) => new Set([...prev, order.id]));
+    setTimeout(() => setUpdatedOrderIds((prev) => {
+      const next = new Set(prev); next.delete(order.id); return next;
+    }), 2000);
+  }, [notifications]);
 
-    client.activate();
-    return () => client.deactivate();
-  }, [token]);
+  const handleOrderCreated = useCallback((order) => {
+    notifications.notifyOrderCreated(order.id);
+  }, [notifications]);
+
+  const handleStatusChange = useCallback((update) => {
+    setOrders((prev) => {
+      const exists = prev.find((o) => o.id === update.orderId);
+      if (exists) {
+        return prev.map((o) => o.id === update.orderId ? { ...o, status: update.status } : o);
+      }
+      return prev;
+    });
+    notifications.notifyOrderStatusUpdate(update.orderId, update.status);
+    setUpdatedOrderIds((prev) => new Set([...prev, update.orderId]));
+    setTimeout(() => setUpdatedOrderIds((prev) => {
+      const next = new Set(prev); next.delete(update.orderId); return next;
+    }), 2000);
+  }, [notifications]);
+
+  // Use WebSocket hook for real-time order updates
+  useOrderUpdates({
+    token,
+    onOrderUpdated: handleOrderUpdated,
+    onOrderCreated: handleOrderCreated,
+    onStatusChange: handleStatusChange,
+  });
 
   return (
     <div className="bg-slate-50 dark:bg-slate-900">
@@ -131,7 +125,7 @@ function Dashboard() {
           <div className="flex items-start justify-between gap-4">
             <div>
               <h1 className="text-2xl font-bold">Welcome back, {currentUser?.username}! 👋</h1>
-              <p className="text-blue-100 mt-1 text-sm">Manage your orders and enquiries below.</p>
+              <p className="text-blue-100 mt-1 text-sm">Track your orders and support tickets.</p>
             </div>
             <button
               type="button"
@@ -145,41 +139,13 @@ function Dashboard() {
 
         {/* Action buttons */}
         <div className="flex flex-wrap gap-3 mb-8">
-          <button
-            type="button"
-            onClick={() => { setShowOrderForm((v) => !v); setShowEnquiryForm(false); }}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition-colors ${
-              showOrderForm ? 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200' : 'bg-blue-600 hover:bg-blue-700 text-white'
-            }`}
-          >
-            {showOrderForm ? '✕ Cancel' : '+ New Order'}
-          </button>
-          <button
-            type="button"
-            onClick={() => { setShowEnquiryForm((v) => !v); setShowOrderForm(false); }}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition-colors ${
-              showEnquiryForm ? 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200' : 'bg-indigo-600 hover:bg-indigo-700 text-white'
-            }`}
-          >
-            {showEnquiryForm ? '✕ Cancel' : '+ New Enquiry'}
-          </button>
+          <Link to="/cart" className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm bg-blue-600 hover:bg-blue-700 text-white transition-colors">
+            🛒 Continue Shopping
+          </Link>
           <Link to="/chat" className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm bg-emerald-600 hover:bg-emerald-700 text-white transition-colors">
             💬 Chat with Admin
           </Link>
         </div>
-
-        {showOrderForm && (
-          <div className="mb-8 bg-white dark:bg-slate-800 rounded-2xl shadow p-6 border border-slate-100 dark:border-slate-700">
-            <h2 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Submit a New Order</h2>
-            <OrderForm onSuccess={() => { setShowOrderForm(false); fetchData(); }} />
-          </div>
-        )}
-        {showEnquiryForm && (
-          <div className="mb-8 bg-white dark:bg-slate-800 rounded-2xl shadow p-6 border border-slate-100 dark:border-slate-700">
-            <h2 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Submit a New Enquiry</h2>
-            <EnquiryForm onSuccess={() => { setShowEnquiryForm(false); fetchData(); }} />
-          </div>
-        )}
 
         {loading && <div className="text-center py-16 text-slate-400 dark:text-slate-500">Loading…</div>}
         {error && (
@@ -197,20 +163,41 @@ function Dashboard() {
               {orders.length === 0 ? (
                 <div className="py-12 text-center text-slate-400 dark:text-slate-500">
                   <div className="text-4xl mb-2">📦</div>
-                  <p>No orders yet.</p>
+                  <p>No orders yet. Start shopping!</p>
+                  <Link to="/catalogue" className="text-blue-600 hover:underline text-sm mt-2 inline-block">
+                    Browse products →
+                  </Link>
                 </div>
               ) : (
                 <div className="divide-y divide-slate-100 dark:divide-slate-700">
                   {orders.map((order) => (
-                    <div key={order.id} className={`px-6 py-4 transition-colors duration-500 ${updatedOrderIds.has(order.id) ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}>
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <p className="font-medium text-slate-800 dark:text-white text-sm">{order.deviceDescription}</p>
-                          <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">#{order.id} · {order.serviceType}</p>
+                    <div key={order.id}>
+                      <div
+                        onClick={() => setExpandedOrderId(expandedOrderId === order.id ? null : order.id)}
+                        className={`px-6 py-4 transition-colors duration-500 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700 ${updatedOrderIds.has(order.id) ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <p className="font-medium text-slate-800 dark:text-white text-sm">Order #{order.id}</p>
+                            <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">£{order.totalPrice?.toFixed(2) || 'N/A'}</p>
+                          </div>
+                          <StatusBadge status={order.status} isOrder animate={updatedOrderIds.has(order.id)} />
                         </div>
-                        <StatusBadge status={order.status} animate={updatedOrderIds.has(order.id)} />
+                        <p className="text-xs text-slate-400 dark:text-slate-500 mt-2">{formatDate(order.createdAt)}</p>
                       </div>
-                      <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">{formatDate(order.createdAt)}</p>
+                      {expandedOrderId === order.id && (
+                        <div className="px-6 py-4 bg-slate-50 dark:bg-slate-900 border-t border-slate-100 dark:border-slate-700 text-sm">
+                          <p className="text-slate-600 dark:text-slate-400 mb-2"><strong>Shipping Address:</strong></p>
+                          <p className="text-xs text-slate-600 dark:text-slate-400 mb-4 whitespace-pre-wrap">{order.shippingAddress}</p>
+                          <button
+                            type="button"
+                            onClick={() => alert(`Order Details:\nID: ${order.id}\nStatus: ${order.status}\nTotal: £${order.totalPrice?.toFixed(2)}\n\nItems: Check admin panel for details`)}
+                            className="text-xs text-blue-600 hover:underline"
+                          >
+                            View full details →
+                          </button>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -220,13 +207,13 @@ function Dashboard() {
             {/* Enquiries */}
             <section className="bg-white dark:bg-slate-800 rounded-2xl shadow border border-slate-100 dark:border-slate-700">
               <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
-                <h2 className="text-lg font-bold text-slate-800 dark:text-white">My Enquiries</h2>
+                <h2 className="text-lg font-bold text-slate-800 dark:text-white">Support Tickets</h2>
                 <span className="text-xs text-slate-400 dark:text-slate-500">{enquiries.length} total</span>
               </div>
               {enquiries.length === 0 ? (
                 <div className="py-12 text-center text-slate-400 dark:text-slate-500">
                   <div className="text-4xl mb-2">💬</div>
-                  <p>No enquiries yet.</p>
+                  <p>No support tickets yet.</p>
                 </div>
               ) : (
                 <div className="divide-y divide-slate-100 dark:divide-slate-700">
@@ -237,7 +224,7 @@ function Dashboard() {
                           <p className="font-medium text-slate-800 dark:text-white text-sm">{enq.subject}</p>
                           <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5 line-clamp-1">#{enq.id} · {enq.message}</p>
                         </div>
-                        <StatusBadge status={enq.status} animate={updatedEnquiryIds.has(enq.id)} />
+                        <StatusBadge status={enq.status} isOrder={false} animate={updatedEnquiryIds.has(enq.id)} />
                       </div>
                       <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">{formatDate(enq.createdAt)}</p>
                     </div>

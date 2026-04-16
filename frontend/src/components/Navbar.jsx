@@ -8,6 +8,9 @@ import axios from 'axios';
 // Map routes to human-readable breadcrumb labels
 const ROUTE_LABELS = {
   '/':          'Home',
+  '/catalogue': 'Shop',
+  '/cart':      'Cart',
+  '/checkout':  'Checkout',
   '/dashboard': 'Dashboard',
   '/admin':     'Admin Panel',
   '/chat':      'Chat',
@@ -23,21 +26,35 @@ function Navbar() {
   const [showChangePwd, setShowChangePwd] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [cartCount, setCartCount] = useState(0);
 
-  // Poll unread count every 15s when logged in
+  // Poll unread count and cart count every 15s when logged in
   useEffect(() => {
-    if (!currentUser || !token) { setUnreadCount(0); return; }
-    const fetchUnread = async () => {
+    if (!currentUser || !token) { 
+      setUnreadCount(0);
+      setCartCount(0);
+      return;
+    }
+    const fetchCounts = async () => {
       try {
+        // Fetch unread messages
         const endpoint = currentUser.role === 'ADMIN' ? '/api/chat/admin/sessions' : '/api/chat/sessions';
-        const res = await axios.get(endpoint, { headers: { Authorization: `Bearer ${token}` } });
+        const chatRes = await axios.get(endpoint, { headers: { Authorization: `Bearer ${token}` } });
         const field = currentUser.role === 'ADMIN' ? 'unreadAdmin' : 'unreadUser';
-        const total = res.data.reduce((sum, s) => sum + (s[field] || 0), 0);
+        const total = chatRes.data.reduce((sum, s) => sum + (s[field] || 0), 0);
         setUnreadCount(total);
+
+        // Fetch cart count only for non-admin users
+        if (currentUser.role !== 'ADMIN') {
+          try {
+            const cartRes = await axios.get('/api/cart/count', { headers: { Authorization: `Bearer ${token}` } });
+            setCartCount(cartRes.data.count || 0);
+          } catch { setCartCount(0); }
+        }
       } catch { /* ignore */ }
     };
-    fetchUnread();
-    const interval = setInterval(fetchUnread, 15000);
+    fetchCounts();
+    const interval = setInterval(fetchCounts, 15000);
     return () => clearInterval(interval);
   }, [currentUser, token]);
 
@@ -58,15 +75,19 @@ function Navbar() {
   const navLinks = currentUser
     ? currentUser.role === 'ADMIN'
       ? [
-          { to: '/admin', label: '🛠️ Admin' },
+          { to: '/admin',     label: '🛠️ Admin' },
+          { to: '/catalogue', label: '🛒 Shop' },
         ]
       : [
+          { to: '/catalogue', label: '🛒 Shop' },
+          { to: '/cart',      label: '🛍️ Cart', count: cartCount },
           { to: '/dashboard', label: '📊 Dashboard' },
           { to: '/chat',      label: '💬 Chat', unread: unreadCount },
         ]
     : [
-        { to: '/login',    label: 'Login' },
-        { to: '/register', label: 'Register' },
+        { to: '/catalogue', label: '🛒 Shop' },
+        { to: '/login',     label: 'Login' },
+        { to: '/register',  label: 'Register' },
       ];
 
   return (
@@ -92,9 +113,9 @@ function Navbar() {
                 </button>
               )}
               <Link to="/" className="flex items-center gap-2 group">
-                <span className="text-xl">🔧</span>
+                <span className="text-xl">🛒</span>
                 <span className="font-bold text-slate-800 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                  TechFix
+                  Shop
                 </span>
               </Link>
             </div>
@@ -112,7 +133,12 @@ function Navbar() {
                   }`}
                 >
                   {link.label}
-                  {link.unread > 0 && (
+                  {link.count && link.count > 0 && (
+                    <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-orange-500 text-white text-xs font-bold flex items-center justify-center">
+                      {link.count > 99 ? '99+' : link.count}
+                    </span>
+                  )}
+                  {link.unread && link.unread > 0 && (
                     <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center">
                       {link.unread > 99 ? '99+' : link.unread}
                     </span>
@@ -228,7 +254,12 @@ function Navbar() {
                 }`}
               >
                 <span>{link.label}</span>
-                {link.unread > 0 && (
+                {link.count && link.count > 0 && (
+                  <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-orange-500 text-white text-xs font-bold flex items-center justify-center">
+                    {link.count > 99 ? '99+' : link.count}
+                  </span>
+                )}
+                {link.unread && link.unread > 0 && (
                   <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center">
                     {link.unread > 99 ? '99+' : link.unread}
                   </span>

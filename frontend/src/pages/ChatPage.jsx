@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import axios from 'axios';
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
+import { toast } from 'react-toastify';
 import { useAuth } from '../context/AuthContext';
 
 function formatTime(iso) {
@@ -99,11 +100,13 @@ function ChatPage() {
             return exists ? prev.map((s) => s.id === session.id ? session : s) : [session, ...prev];
           });
           setActiveSession((prev) => prev?.id === session.id ? session : prev);
+          toast.success(`✅ Chat accepted: "${session.subject}"`);
         });
         client.subscribe('/user/queue/chat-closed', (msg) => {
           const session = JSON.parse(msg.body);
           setSessions((prev) => prev.map((s) => s.id === session.id ? session : s));
           setActiveSession((prev) => prev?.id === session.id ? session : prev);
+          toast.info(`🔒 Chat closed: "${session.subject}"`);
         });
         if (activeSessionRef.current) subscribeToSession(client, activeSessionRef.current.id);
       },
@@ -179,6 +182,7 @@ function ChatPage() {
       setShowNewForm(false);
       setNewReq({ orderId: '', subject: '' });
       openSession(res.data);
+      toast.success('💬 Chat request sent! Waiting for admin to accept.');
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to create chat request.');
     } finally { setCreating(false); }

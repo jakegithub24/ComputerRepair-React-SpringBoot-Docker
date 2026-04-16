@@ -12,13 +12,12 @@ CREATE TABLE IF NOT EXISTS users (
     deleted_at    TEXT    DEFAULT NULL
 );
 
--- Orders table
+-- Orders table (E-Commerce)
 CREATE TABLE IF NOT EXISTS orders (
     id                 INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id            INTEGER NOT NULL,
-    service_type       TEXT    NOT NULL,
-    device_description TEXT    NOT NULL,
-    notes              TEXT,
+    total_price        REAL    NOT NULL DEFAULT 0,
+    shipping_address   TEXT,
     status             TEXT    NOT NULL DEFAULT 'Pending',
     created_at         TEXT    NOT NULL,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -55,10 +54,51 @@ CREATE TABLE IF NOT EXISTS chat_messages (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     session_id      INTEGER NOT NULL,
     sender_id       INTEGER NOT NULL,
-    sender_role     TEXT    NOT NULL,  -- 'USER' or 'ADMIN'
-    message_type    TEXT    NOT NULL DEFAULT 'TEXT',  -- 'TEXT' or 'IMAGE'
-    content         TEXT    NOT NULL,  -- text content or base64 image data
+    sender_role     TEXT    NOT NULL,
+    message_type    TEXT    NOT NULL DEFAULT 'TEXT',
+    content         TEXT    NOT NULL,
     image_mime_type TEXT    DEFAULT NULL,
     sent_at         TEXT    NOT NULL,
     FOREIGN KEY (session_id) REFERENCES chat_sessions(id) ON DELETE CASCADE
+);
+
+-- Catalogue items table
+CREATE TABLE IF NOT EXISTS catalogue_items (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    product_id   TEXT    UNIQUE NOT NULL,  -- e.g. PROD-0001
+    name         TEXT    NOT NULL,
+    category     TEXT    NOT NULL,         -- Laptop, RAM, SSD, Router, Pendrive, Other
+    description  TEXT,
+    price        REAL    NOT NULL DEFAULT 0,
+    stock        INTEGER NOT NULL DEFAULT 0,
+    brand        TEXT,
+    model        TEXT,
+    specs        TEXT,                     -- JSON string of key-value specs
+    image_base64 TEXT,                     -- optional product image
+    available    INTEGER NOT NULL DEFAULT 1,  -- 1=available, 0=unavailable
+    created_at   TEXT    NOT NULL,
+    updated_at   TEXT    NOT NULL
+);
+
+-- Cart items table
+CREATE TABLE IF NOT EXISTS cart_items (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id         INTEGER NOT NULL,
+    product_id      TEXT    NOT NULL,
+    quantity        INTEGER NOT NULL DEFAULT 1,
+    created_at      TEXT    NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (product_id) REFERENCES catalogue_items(product_id) ON DELETE CASCADE
+);
+
+-- Order items table
+CREATE TABLE IF NOT EXISTS order_items (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    order_id            INTEGER NOT NULL,
+    product_id          TEXT    NOT NULL,
+    quantity            INTEGER NOT NULL DEFAULT 1,
+    price_at_purchase   REAL    NOT NULL,
+    created_at          TEXT    NOT NULL,
+    FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+    FOREIGN KEY (product_id) REFERENCES catalogue_items(product_id)
 );

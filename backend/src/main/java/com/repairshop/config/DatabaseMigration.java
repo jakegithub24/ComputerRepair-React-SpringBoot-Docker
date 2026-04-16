@@ -50,6 +50,22 @@ public class DatabaseMigration implements ApplicationRunner {
             "image_mime_type TEXT DEFAULT NULL, " +
             "sent_at TEXT NOT NULL"
         );
+        createTableIfMissing("catalogue_items",
+            "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+            "product_id TEXT UNIQUE NOT NULL, " +
+            "name TEXT NOT NULL, " +
+            "category TEXT NOT NULL, " +
+            "description TEXT, " +
+            "price REAL NOT NULL DEFAULT 0, " +
+            "stock INTEGER NOT NULL DEFAULT 0, " +
+            "brand TEXT, " +
+            "model TEXT, " +
+            "specs TEXT, " +
+            "image_base64 TEXT, " +
+            "available INTEGER NOT NULL DEFAULT 1, " +
+            "created_at TEXT NOT NULL, " +
+            "updated_at TEXT NOT NULL"
+        );
     }
 
     private void addColumnIfMissing(String table, String column, String definition) {
