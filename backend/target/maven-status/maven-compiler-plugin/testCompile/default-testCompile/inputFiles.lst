@@ -6,6 +6,7 @@
 /home/archino/Storage/GitHub/Repositories/ComputerRepair-React-SpringBoot-Docker/backend/src/test/java/com/repairshop/property/OrderMissingFieldsPropertyTest.java
 /home/archino/Storage/GitHub/Repositories/ComputerRepair-React-SpringBoot-Docker/backend/src/test/java/com/repairshop/property/InvalidCredentialsPropertyTest.java
 /home/archino/Storage/GitHub/Repositories/ComputerRepair-React-SpringBoot-Docker/backend/src/test/java/com/repairshop/property/AdminJwtRolePropertyTest.java
+/home/archino/Storage/GitHub/Repositories/ComputerRepair-React-SpringBoot-Docker/backend/src/test/java/com/repairshop/OrderItemTest.java
 /home/archino/Storage/GitHub/Repositories/ComputerRepair-React-SpringBoot-Docker/backend/src/test/java/com/repairshop/property/InvalidStatusPropertyTest.java
 /home/archino/Storage/GitHub/Repositories/ComputerRepair-React-SpringBoot-Docker/backend/src/test/java/com/repairshop/AdminSeederTest.java
 /home/archino/Storage/GitHub/Repositories/ComputerRepair-React-SpringBoot-Docker/backend/src/test/java/com/repairshop/property/ValidRegistrationPropertyTest.java
@@ -16,8 +17,10 @@
 /home/archino/Storage/GitHub/Repositories/ComputerRepair-React-SpringBoot-Docker/backend/src/test/java/com/repairshop/property/WeakPasswordPropertyTest.java
 /home/archino/Storage/GitHub/Repositories/ComputerRepair-React-SpringBoot-Docker/backend/src/test/java/com/repairshop/property/AdminUserListPropertyTest.java
 /home/archino/Storage/GitHub/Repositories/ComputerRepair-React-SpringBoot-Docker/backend/src/test/java/com/repairshop/property/EnquiryMissingFieldsPropertyTest.java
+/home/archino/Storage/GitHub/Repositories/ComputerRepair-React-SpringBoot-Docker/backend/src/test/java/com/repairshop/CatalogueItemTest.java
 /home/archino/Storage/GitHub/Repositories/ComputerRepair-React-SpringBoot-Docker/backend/src/test/java/com/repairshop/property/InvalidEmailPropertyTest.java
 /home/archino/Storage/GitHub/Repositories/ComputerRepair-React-SpringBoot-Docker/backend/src/test/java/com/repairshop/property/NewEnquiryStatusOpenPropertyTest.java
+/home/archino/Storage/GitHub/Repositories/ComputerRepair-React-SpringBoot-Docker/backend/src/test/java/com/repairshop/CartItemTest.java
 /home/archino/Storage/GitHub/Repositories/ComputerRepair-React-SpringBoot-Docker/backend/src/test/java/com/repairshop/property/StatusUpdateRoundTripPropertyTest.java
 /home/archino/Storage/GitHub/Repositories/ComputerRepair-React-SpringBoot-Docker/backend/src/test/java/com/repairshop/property/AdminSeesAllOrdersEnquiriesPropertyTest.java
 /home/archino/Storage/GitHub/Repositories/ComputerRepair-React-SpringBoot-Docker/backend/src/test/java/com/repairshop/property/PasswordStoragePropertyTest.java

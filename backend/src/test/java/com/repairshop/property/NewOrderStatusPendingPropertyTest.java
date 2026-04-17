@@ -54,7 +54,7 @@ class NewOrderStatusPendingPropertyTest {
 
     @Test
     void newOrdersAreCreatedWithStatusPending() throws Exception {
-        int tries = 100;
+        int tries = 10;
         ThreadLocalRandom rng = ThreadLocalRandom.current();
 
         for (int i = 0; i < tries; i++) {

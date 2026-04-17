@@ -1,4 +1,13 @@
 -------------------------------------------------------------------------------
 Test set: com.repairshop.property.CascadeDeletionPropertyTest
 -------------------------------------------------------------------------------
-Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 7.373 s -- in com.repairshop.property.CascadeDeletionPropertyTest
+Tests run: 2, Failures: 1, Errors: 0, Skipped: 0, Time elapsed: 1.064 s <<< FAILURE! -- in com.repairshop.property.CascadeDeletionPropertyTest
+com.repairshop.property.CascadeDeletionPropertyTest.accountDeletionViaEndpointCascadesToAllAssociatedRecords -- Time elapsed: 0.299 s <<< FAILURE!
+java.lang.AssertionError: 
+[User 12 (trial 0) should be deleted] 
+Expecting an empty Optional but was containing value: com.repairshop.model.User@25587290
+	at com.repairshop.property.CascadeDeletionPropertyTest.accountDeletionViaEndpointCascadesToAllAssociatedRecords(CascadeDeletionPropertyTest.java:168)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:565)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1612)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1612)
+

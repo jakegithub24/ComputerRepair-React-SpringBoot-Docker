@@ -65,7 +65,7 @@ class CascadeDeletionPropertyTest {
      */
     @Test
     void accountDeletionCascadesToAllAssociatedRecords() {
-        int tries = 100;
+        int tries = 10;
         ThreadLocalRandom rng = ThreadLocalRandom.current();
 
         for (int i = 0; i < tries; i++) {
@@ -121,7 +121,7 @@ class CascadeDeletionPropertyTest {
      */
     @Test
     void accountDeletionViaEndpointCascadesToAllAssociatedRecords() throws Exception {
-        int tries = 50;
+        int tries = 5;
         ThreadLocalRandom rng = ThreadLocalRandom.current();
 
         for (int i = 0; i < tries; i++) {

@@ -32,12 +32,12 @@ public class ProductController {
     }
 
     /**
-     * GET /api/products/{id} — get product by ID.
+     * GET /api/products/{productId} — get product by productId string (e.g. PROD-0001).
      * Returns 404 if product not found.
      */
-    @GetMapping("/{id}")
-    public CatalogueItem getProduct(@PathVariable Long id) {
-        return productService.getProductById(id);
+    @GetMapping("/{productId}")
+    public CatalogueItem getProduct(@PathVariable String productId) {
+        return productService.getProductByProductId(productId);
     }
 
     /**

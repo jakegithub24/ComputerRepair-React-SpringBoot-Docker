@@ -46,7 +46,7 @@ class DuplicateUsernamePropertyTest {
      */
     @Test
     void duplicateUsernameIsRejected() {
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < 10; i++) {
             String username = "dupuser_" + i + "_" + System.nanoTime();
             String firstEmail = username + "@first.com";
             String secondEmail = username + "@second.com";

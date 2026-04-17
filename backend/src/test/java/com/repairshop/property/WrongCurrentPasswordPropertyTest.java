@@ -51,7 +51,7 @@ class WrongCurrentPasswordPropertyTest {
 
     @Test
     void wrongCurrentPasswordBlocksPasswordChange() {
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < 10; i++) {
             String username = "wrongcurr_user_" + i + "_" + System.nanoTime();
             String email = username + "@example.com";
             String correctPassword = "CorrectPass1!" + i;

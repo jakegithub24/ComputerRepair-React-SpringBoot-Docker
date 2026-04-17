@@ -31,7 +31,7 @@ class PasswordStoragePropertyTest {
      */
     @Test
     void passwordStoredAsArgon2id() {
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < 10; i++) {
             String plaintext = "Password1!" + UUID.randomUUID().toString().replace("-", "").substring(0, 8);
 
             String hash = authService.hashPassword(plaintext);

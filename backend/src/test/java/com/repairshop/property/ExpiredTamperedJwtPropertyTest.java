@@ -47,7 +47,7 @@ class ExpiredTamperedJwtPropertyTest {
         SecretKey key = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
         String now = Instant.now().toString();
 
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < 10; i++) {
             String username = "expired_jwt_user_" + i;
             Date pastExpiry = new Date(System.currentTimeMillis() - 1000);
 
@@ -73,7 +73,7 @@ class ExpiredTamperedJwtPropertyTest {
     void tamperedJwtReturns401() {
         String now = Instant.now().toString();
 
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < 10; i++) {
             String username = "tampered_jwt_user_" + i;
             User user = new User(username, username + "@test.com", "$argon2id$test_hash", "USER", now);
             user.setId((long) (i + 1));

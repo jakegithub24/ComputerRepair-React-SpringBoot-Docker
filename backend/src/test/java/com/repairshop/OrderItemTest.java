@@ -62,8 +62,8 @@ class OrderItemTest {
         // Create test order
         testOrder = new Order();
         testOrder.setUserId(testUser.getId());
-        testOrder.setTotalPrice(0.0);
-        testOrder.setShippingAddress("123 Test St, Test City, TC 12345");
+        testOrder.setServiceType("REPAIR");
+        testOrder.setDeviceDescription("Test device");
         testOrder.setStatus("Pending");
         testOrder.setCreatedAt(Instant.now().toString());
         testOrder = orderRepository.save(testOrder);
@@ -113,8 +113,8 @@ class OrderItemTest {
         // Item 2: Same product but different price (historical)
         Order order2 = new Order();
         order2.setUserId(testUser.getId());
-        order2.setTotalPrice(0.0);
-        order2.setShippingAddress("Same Address");
+        order2.setServiceType("REPAIR");
+        order2.setDeviceDescription("Same device");
         order2.setStatus("Pending");
         order2.setCreatedAt(Instant.now().toString());
         order2 = orderRepository.save(order2);

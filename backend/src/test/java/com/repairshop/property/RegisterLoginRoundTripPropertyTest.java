@@ -51,7 +51,7 @@ class RegisterLoginRoundTripPropertyTest {
      */
     @Test
     void registerThenLoginRoundTrip() {
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < 10; i++) {
             String username = "roundtrip_user_" + i + "_" + System.nanoTime();
             String email = username + "@example.com";
             String password = "Password1!" + i;

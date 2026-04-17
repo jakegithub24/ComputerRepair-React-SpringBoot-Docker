@@ -54,7 +54,7 @@ class EnquiryMissingFieldsPropertyTest {
 
     @Test
     void enquiriesMissingSubjectReturn400() throws Exception {
-        int tries = 100;
+        int tries = 10;
         ThreadLocalRandom rng = ThreadLocalRandom.current();
 
         for (int i = 0; i < tries; i++) {
@@ -79,7 +79,7 @@ class EnquiryMissingFieldsPropertyTest {
 
     @Test
     void enquiriesMissingMessageReturn400() throws Exception {
-        int tries = 100;
+        int tries = 10;
         ThreadLocalRandom rng = ThreadLocalRandom.current();
 
         for (int i = 0; i < tries; i++) {

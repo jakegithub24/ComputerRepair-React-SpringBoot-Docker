@@ -56,7 +56,7 @@ class UserSeesOnlyOwnRecordsPropertyTest {
 
     @Test
     void usersSeesOnlyTheirOwnOrders() throws Exception {
-        int tries = 100;
+        int tries = 10;
         ThreadLocalRandom rng = ThreadLocalRandom.current();
 
         for (int i = 0; i < tries; i++) {

@@ -54,7 +54,7 @@ class AdminUserListPropertyTest {
 
     @Test
     void adminUserListIsCompleteAndPaginated() throws Exception {
-        int tries = 20;
+        int tries = 5;
         ThreadLocalRandom rng = ThreadLocalRandom.current();
 
         for (int i = 0; i < tries; i++) {

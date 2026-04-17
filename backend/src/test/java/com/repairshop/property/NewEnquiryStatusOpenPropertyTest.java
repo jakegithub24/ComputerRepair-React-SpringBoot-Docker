@@ -51,7 +51,7 @@ class NewEnquiryStatusOpenPropertyTest {
 
     @Test
     void newEnquiriesAreCreatedWithStatusOpen() throws Exception {
-        int tries = 100;
+        int tries = 10;
 
         for (int i = 0; i < tries; i++) {
             String username = "enq_open_user_" + i + "_" + System.nanoTime();

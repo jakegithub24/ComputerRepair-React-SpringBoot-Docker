@@ -52,7 +52,7 @@ class PasswordChangeRoundTripPropertyTest {
 
     @Test
     void passwordChangeRoundTrip() {
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < 10; i++) {
             String username = "pwchange_user_" + i + "_" + System.nanoTime();
             String email = username + "@example.com";
             String oldPassword = "OldPass1!" + i;

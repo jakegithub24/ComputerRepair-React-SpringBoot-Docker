@@ -1,9 +1,13 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import axios from 'axios';
 import LandingPage from './LandingPage';
 
+jest.mock('axios');
+
 function renderLandingPage() {
+  axios.get.mockResolvedValue({ data: { content: [] } });
   return render(
     <MemoryRouter>
       <LandingPage />
@@ -12,25 +16,26 @@ function renderLandingPage() {
 }
 
 describe('LandingPage', () => {
-  it('renders the shop name', () => {
+  afterEach(() => jest.clearAllMocks());
+
+  it('renders the hero heading', () => {
     renderLandingPage();
-    expect(screen.getByRole('heading', { name: /TechFix Repair Shop/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Tech Products You Can Trust/i })).toBeInTheDocument();
   });
 
-  it('renders contact information', () => {
+  it('renders Shop Now link', () => {
     renderLandingPage();
-    expect(screen.getByText(/contact@techfixrepair\.com/i)).toBeInTheDocument();
-    expect(screen.getByText(/\+44 1234 567890/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /shop now/i })).toBeInTheDocument();
   });
 
-  it('renders all 5 service types', () => {
+  it('renders category browse section', () => {
     renderLandingPage();
-    const serviceNames = ['Buy', 'Sell', 'Upgrade', 'Repair', 'General Enquiry'];
-    serviceNames.forEach((name) => {
-      // Each service name appears as a <strong> heading inside a list item
-      const matches = screen.getAllByText(new RegExp(name, 'i'));
-      expect(matches.length).toBeGreaterThan(0);
-    });
+    expect(screen.getByRole('heading', { name: /shop by category/i })).toBeInTheDocument();
+  });
+
+  it('renders Why Choose Us section', () => {
+    renderLandingPage();
+    expect(screen.getByRole('heading', { name: /why choose us/i })).toBeInTheDocument();
   });
 
   it('renders register and login links', () => {

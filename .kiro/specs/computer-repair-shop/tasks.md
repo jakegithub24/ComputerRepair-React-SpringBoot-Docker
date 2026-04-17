@@ -100,7 +100,7 @@ Incremental implementation of the full-stack computer repair shop application. T
     - **Property 12: Wrong current password blocks password change**
     - **Validates: Requirements 5.3, 10.3**
 
-- [ ] 7. Checkpoint — Ensure all auth and user tests pass
+- [x] 7. Checkpoint — Ensure all auth and user tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 - [x] 8. Implement user account deletion
@@ -173,14 +173,14 @@ Incremental implementation of the full-stack computer repair shop application. T
     - **Property 23: Invalid status value returns 400**
     - **Validates: Requirements 12.5**
 
-- [ ] 12. Implement input sanitization
+- [~] 12. Implement input sanitization
   - Add input sanitization in the service layer (or via a request filter) to escape SQL injection patterns and XSS payloads before persistence
   - _Requirements: 13.5_
-  - [ ] 12.1 Write property test for malicious input being sanitized (Property 25)
+  - [~] 12.1 Write property test for malicious input being sanitized (Property 25)
     - **Property 25: Malicious input is sanitized before persistence**
     - **Validates: Requirements 13.5**
 
-- [ ] 13. Checkpoint — Ensure all backend tests pass
+- [~] 13. Checkpoint — Ensure all backend tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 - [x] 14. Implement React frontend — core setup
@@ -227,10 +227,10 @@ Incremental implementation of the full-stack computer repair shop application. T
   - [x] 17.4 Write React Testing Library tests for `AdminPanel` rendering user list and order/enquiry lists with mock API responses
     - _Requirements: 11.1, 12.1, 12.2_
 
-- [ ] 18. Checkpoint — Ensure all frontend tests pass
+- [~] 18. Checkpoint — Ensure all frontend tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 19. Configure CORS and HTTPS
+- [~] 19. Configure CORS and HTTPS
   - Configure Spring Security CORS policy to allow requests only from the known frontend origin
   - Document HTTPS setup for production (TLS termination at Nginx or reverse proxy)
   - _Requirements: 13.1, 13.4_
@@ -245,7 +245,7 @@ Incremental implementation of the full-stack computer repair shop application. T
   - [x] 20.4 Write `docker-compose.yml` defining all three services, Docker volume for SQLite persistence, `depends_on` with health-check condition on the database service
     - _Requirements: 14.4, 14.5, 14.6_
 
-- [ ] 21. Final checkpoint — Wire everything together and verify
+- [~] 21. Final checkpoint — Wire everything together and verify
   - Ensure all backend and frontend tests pass
   - Verify Docker Compose stack starts correctly with all three containers
   - Ensure all tests pass, ask the user if questions arise.

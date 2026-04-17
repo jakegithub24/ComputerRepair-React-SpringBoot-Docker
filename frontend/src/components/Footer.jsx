@@ -10,23 +10,22 @@ function Footer() {
           {/* Brand */}
           <div>
             <div className="flex items-center gap-2 mb-3">
-              <span className="text-xl">🔧</span>
-              <span className="font-bold text-slate-800 dark:text-white">TechFix Repair Shop</span>
+              <span className="text-xl">🛍️</span>
+              <span className="font-bold text-slate-800 dark:text-white">TechShop</span>
             </div>
             <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-              Your local experts for laptop and computer repairs, upgrades, and trade-ins.
+              Your one-stop shop for laptops, components, and tech accessories.
             </p>
           </div>
 
-          {/* Services */}
+          {/* Categories */}
           <div>
-            <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide mb-3">Services</h3>
+            <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide mb-3">Shop</h3>
             <ul className="space-y-1.5 text-sm text-slate-500 dark:text-slate-400">
-              <li>🛒 Buy a Device</li>
-              <li>💰 Sell Your Device</li>
-              <li>⚡ Upgrades</li>
-              <li>🔧 Repairs</li>
-              <li>💬 General Enquiries</li>
+              <li><Link to="/catalogue" className="hover:text-blue-500 dark:hover:text-blue-400 transition-colors">💻 Laptops &amp; Desktops</Link></li>
+              <li><Link to="/catalogue" className="hover:text-blue-500 dark:hover:text-blue-400 transition-colors">🧠 RAM &amp; Storage</Link></li>
+              <li><Link to="/catalogue" className="hover:text-blue-500 dark:hover:text-blue-400 transition-colors">🎮 GPUs &amp; CPUs</Link></li>
+              <li><Link to="/catalogue" className="hover:text-blue-500 dark:hover:text-blue-400 transition-colors">🖥️ Monitors &amp; Accessories</Link></li>
             </ul>
           </div>
 
@@ -35,8 +34,8 @@ function Footer() {
             <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide mb-3">Contact</h3>
             <ul className="space-y-1.5 text-sm text-slate-500 dark:text-slate-400">
               <li>
-                <a href="mailto:contact@techfixrepair.com" className="hover:text-blue-500 dark:hover:text-blue-400 transition-colors">
-                  📧 contact@techfixrepair.com
+                <a href="mailto:support@techshop.com" className="hover:text-blue-500 dark:hover:text-blue-400 transition-colors">
+                  📧 support@techshop.com
                 </a>
               </li>
               <li>
@@ -56,7 +55,7 @@ function Footer() {
         {/* Bottom bar */}
         <div className="mt-8 pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-2">
           <p className="text-xs text-slate-400 dark:text-slate-500">
-            © {new Date().getFullYear()} TechFix Repair Shop. All rights reserved.
+            © {new Date().getFullYear()} TechShop. All rights reserved.
           </p>
           <p className="text-xs text-slate-300 dark:text-slate-600">
             Built with ❤️ for your tech needs

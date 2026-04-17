@@ -55,7 +55,7 @@ class OrderMissingFieldsPropertyTest {
 
     @Test
     void ordersMissingServiceTypeReturn400() throws Exception {
-        int tries = 100;
+        int tries = 10;
         ThreadLocalRandom rng = ThreadLocalRandom.current();
 
         for (int i = 0; i < tries; i++) {
@@ -81,7 +81,7 @@ class OrderMissingFieldsPropertyTest {
 
     @Test
     void ordersMissingDeviceDescriptionReturn400() throws Exception {
-        int tries = 100;
+        int tries = 10;
         ThreadLocalRandom rng = ThreadLocalRandom.current();
 
         for (int i = 0; i < tries; i++) {

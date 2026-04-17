@@ -220,7 +220,7 @@ class CartItemTest {
         cartItem.setCreatedAt(Instant.now().toString());
 
         CartItem saved = cartItemRepository.save(cartItem);
-        Integer cartItemId = saved.getId();
+        Long cartItemId = saved.getId();
 
         // Simulate new session - fetch same item
         Optional<CartItem> retrieved = cartItemRepository.findById(cartItemId);

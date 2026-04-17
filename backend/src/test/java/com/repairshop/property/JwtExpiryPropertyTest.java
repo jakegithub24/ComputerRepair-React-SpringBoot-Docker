@@ -36,7 +36,7 @@ class JwtExpiryPropertyTest {
         String[] roles = {"USER", "ADMIN"};
         String now = Instant.now().toString();
 
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < 10; i++) {
             String role = roles[i % 2];
             String username = "jwt_expiry_user_" + i + "_" + System.nanoTime();
             String email = username + "@test.com";

@@ -12,12 +12,13 @@ CREATE TABLE IF NOT EXISTS users (
     deleted_at    TEXT    DEFAULT NULL
 );
 
--- Orders table (E-Commerce)
+-- Orders table (Repair Shop)
 CREATE TABLE IF NOT EXISTS orders (
     id                 INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id            INTEGER NOT NULL,
-    total_price        REAL    NOT NULL DEFAULT 0,
-    shipping_address   TEXT,
+    service_type       TEXT    NOT NULL,
+    device_description TEXT    NOT NULL,
+    notes              TEXT,
     status             TEXT    NOT NULL DEFAULT 'Pending',
     created_at         TEXT    NOT NULL,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE

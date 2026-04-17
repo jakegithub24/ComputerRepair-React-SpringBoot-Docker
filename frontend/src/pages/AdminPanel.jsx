@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { toast } from 'react-toastify';
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import { useAuth } from '../context/AuthContext';
@@ -91,14 +92,13 @@ function AdminPanel() {
   const [deleteConfirm, setDeleteConfirm] = useState(null);
 
   const stompRef = useRef(null);
-  const headers = { Authorization: `Bearer ${token}` };
 
   const handle401 = useCallback(() => { navigate('/login'); }, [navigate]);
 
   const fetchUsers = useCallback(async (page = 0) => {
     setUsersLoading(true); setUsersError('');
     try {
-      const res = await axios.get(`/api/admin/users?page=${page}&size=20`, { headers });
+      const res = await axios.get(`/api/admin/users?page=${page}&size=20`, { headers: { Authorization: `Bearer ${token}` } });
       setUsers(res.data.content); setUsersTotalPages(res.data.totalPages);
     } catch (err) {
       if (err.response?.status === 401) handle401();
@@ -109,7 +109,7 @@ function AdminPanel() {
   const fetchDeletedUsers = useCallback(async (page = 0) => {
     setDeletedUsersLoading(true);
     try {
-      const res = await axios.get(`/api/admin/users/deleted?page=${page}&size=20`, { headers });
+      const res = await axios.get(`/api/admin/users/deleted?page=${page}&size=20`, { headers: { Authorization: `Bearer ${token}` } });
       setDeletedUsers(res.data.content); setDeletedUsersTotalPages(res.data.totalPages);
     } catch { /* ignore */ } finally { setDeletedUsersLoading(false); }
   }, [token]);
@@ -117,7 +117,7 @@ function AdminPanel() {
   const fetchOrders = useCallback(async (page = 0) => {
     setOrdersLoading(true); setOrdersError('');
     try {
-      const res = await axios.get(`/api/admin/orders?page=${page}&size=20`, { headers });
+      const res = await axios.get(`/api/admin/orders?page=${page}&size=20`, { headers: { Authorization: `Bearer ${token}` } });
       setOrders(res.data.content); setOrdersTotalPages(res.data.totalPages);
     } catch (err) {
       if (err.response?.status === 401) handle401();
@@ -128,7 +128,7 @@ function AdminPanel() {
   const fetchEnquiries = useCallback(async (page = 0) => {
     setEnquiriesLoading(true); setEnquiriesError('');
     try {
-      const res = await axios.get(`/api/admin/enquiries?page=${page}&size=20`, { headers });
+      const res = await axios.get(`/api/admin/enquiries?page=${page}&size=20`, { headers: { Authorization: `Bearer ${token}` } });
       setEnquiries(res.data.content); setEnquiriesTotalPages(res.data.totalPages);
     } catch (err) {
       if (err.response?.status === 401) handle401();
@@ -136,10 +136,10 @@ function AdminPanel() {
     } finally { setEnquiriesLoading(false); }
   }, [token, handle401]);
 
-  useEffect(() => { fetchUsers(usersPage); }, [usersPage]);
-  useEffect(() => { fetchDeletedUsers(deletedUsersPage); }, [deletedUsersPage]);
-  useEffect(() => { fetchOrders(ordersPage); }, [ordersPage]);
-  useEffect(() => { fetchEnquiries(enquiriesPage); }, [enquiriesPage]);
+  useEffect(() => { fetchUsers(usersPage); }, [usersPage, fetchUsers]);
+  useEffect(() => { fetchDeletedUsers(deletedUsersPage); }, [deletedUsersPage, fetchDeletedUsers]);
+  useEffect(() => { fetchOrders(ordersPage); }, [ordersPage, fetchOrders]);
+  useEffect(() => { fetchEnquiries(enquiriesPage); }, [enquiriesPage, fetchEnquiries]);
 
   // Inventory updates WebSocket hook
   const handleInventoryChanged = useCallback((update) => {
@@ -169,8 +169,6 @@ function AdminPanel() {
       connectHeaders: { Authorization: `Bearer ${token}` },
       reconnectDelay: 3000,
       onConnect: () => {
-        stompRef.current = client;
-
         // New user registered
         client.subscribe('/topic/admin/users/new', (msg) => {
           const newUser = JSON.parse(msg.body);
@@ -225,10 +223,10 @@ function AdminPanel() {
   async function handleDeleteUser(id, hardDelete) {
     try {
       if (hardDelete) {
-        await axios.delete(`/api/admin/users/${id}`, { headers });
+        await axios.delete(`/api/admin/users/${id}`, { headers: { Authorization: `Bearer ${token}` } });
         toast.success('User permanently deleted.');
       } else {
-        await axios.patch(`/api/admin/users/${id}/deactivate`, {}, { headers });
+        await axios.patch(`/api/admin/users/${id}/deactivate`, {}, { headers: { Authorization: `Bearer ${token}` } });
         toast.success('User deactivated.');
       }
       setDeleteConfirm(null);
@@ -239,10 +237,11 @@ function AdminPanel() {
       else toast.error(hardDelete ? 'Failed to delete user.' : 'Failed to deactivate user.');
     }
   }
+
   async function handleOrderStatusChange(id, status) {
     setOrders((prev) => prev.map((o) => o.id === id ? { ...o, status } : o));
     try {
-      await axios.patch(`/api/admin/orders/${id}/status`, { status }, { headers });
+      await axios.patch(`/api/admin/orders/${id}/status`, { status }, { headers: { Authorization: `Bearer ${token}` } });
       toast.success(`📦 Order #${id} → ${status}`);
     } catch (err) {
       if (err.response?.status === 401) handle401();
@@ -253,7 +252,7 @@ function AdminPanel() {
   async function handleEnquiryStatusChange(id, status) {
     setEnquiries((prev) => prev.map((e) => e.id === id ? { ...e, status } : e));
     try {
-      await axios.patch(`/api/admin/enquiries/${id}/status`, { status }, { headers });
+      await axios.patch(`/api/admin/enquiries/${id}/status`, { status }, { headers: { Authorization: `Bearer ${token}` } });
       toast.success(`💬 Enquiry #${id} → ${status}`);
     } catch (err) {
       if (err.response?.status === 401) handle401();
@@ -275,7 +274,7 @@ function AdminPanel() {
     <div className="bg-slate-50 dark:bg-slate-900">
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Header */}
-        <div className="mb-8 p-6 bg-gradient-to-r from-amber-500 to-orange-500 dark:from-amber-600 dark:to-orange-600 rounded-2xl text-white shadow">
+        <div className="mb-8 p-6 bg-linear-to-r from-amber-500 to-orange-500 dark:from-amber-600 dark:to-orange-600 rounded-2xl text-white shadow">
           <h1 className="text-2xl font-bold">Admin Panel 🛠️</h1>
           <p className="text-amber-100 mt-1 text-sm">Manage users, orders, and enquiries.</p>
         </div>
@@ -340,7 +339,7 @@ function AdminPanel() {
             <div className="bg-white dark:bg-slate-800 rounded-2xl shadow border border-slate-100 dark:border-slate-700">
               <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
                 <h2 className="text-lg font-bold text-slate-800 dark:text-white">Active Users</h2>
-                <span className="text-xs text-slate-400 dark:text-slate-500">{users.length} shown</span>30 + 35 + 40 + 55 + 185 + 205 = Kinda 5,50,00 worth laptops are there...
+                <span className="text-xs text-slate-400 dark:text-slate-500">{users.length} shown</span>
               </div>
               {usersError && <div className="mx-6 mt-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-sm">{usersError}</div>}
               {usersLoading ? (

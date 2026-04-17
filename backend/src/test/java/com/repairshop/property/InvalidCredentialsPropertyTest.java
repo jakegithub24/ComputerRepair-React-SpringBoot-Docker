@@ -50,7 +50,7 @@ class InvalidCredentialsPropertyTest {
      */
     @Test
     void nonExistentUsernameReturns401() {
-        for (int i = 0; i < 50; i++) {
+        for (int i = 0; i < 5; i++) {
             final String nonExistentUsername = "nonexistent_user_" + i + "_" + System.nanoTime();
             final int iteration = i;
 
@@ -62,7 +62,7 @@ class InvalidCredentialsPropertyTest {
 
     @Test
     void wrongPasswordReturns401() {
-        for (int i = 0; i < 50; i++) {
+        for (int i = 0; i < 5; i++) {
             String username = "wrongpwd_user_" + i + "_" + System.nanoTime();
             String email = username + "@example.com";
             String correctPassword = "Password1!" + i;

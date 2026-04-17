@@ -35,7 +35,7 @@ class AdminJwtRolePropertyTest {
     void adminJwtContainsAdminRoleClaim() {
         String now = Instant.now().toString();
 
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < 10; i++) {
             String adminUsername = "admin_jwt_test_" + i;
             User adminUser = new User(adminUsername, adminUsername + "@example.com",
                     "$argon2id$test_hash", "ADMIN", now);

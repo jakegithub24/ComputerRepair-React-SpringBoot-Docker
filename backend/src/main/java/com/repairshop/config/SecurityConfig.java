@@ -30,6 +30,8 @@ public class SecurityConfig {
                 .requestMatchers("POST", "/api/auth/register").permitAll()
                 .requestMatchers("POST", "/api/auth/login").permitAll()
                 .requestMatchers("/ws/**").permitAll()
+                .requestMatchers("GET", "/api/products").permitAll()
+                .requestMatchers("GET", "/api/products/**").permitAll()
                 .requestMatchers("GET", "/api/catalogue").permitAll()
                 .requestMatchers("GET", "/api/catalogue/{productId}").permitAll()
                 .requestMatchers("/api/catalogue/admin/**").hasRole("ADMIN")

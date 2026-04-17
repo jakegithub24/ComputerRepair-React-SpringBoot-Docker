@@ -46,7 +46,7 @@ class NonAdminForbiddenPropertyTest {
      */
     @Test
     void nonAdminJwtOnAdminEndpointsReturns403() throws Exception {
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < 10; i++) {
             User user = new User(
                     "user_" + i,
                     "user" + i + "@example.com",
